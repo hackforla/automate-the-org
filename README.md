@@ -1,2 +1,4 @@
-# open-source-automations
-This repo is for creating open source automations that can be of use to us internally and externally to others.
+# Automate the ORG
+This repo is for 
+- moving automatinons from the team level to the org level (so that they are available for all teams)
+- creating new automation, to enhance the org or all projects.
