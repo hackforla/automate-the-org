@@ -54,6 +54,24 @@ jobs:
           cat rollout-config.yaml
           echo "-----------------------------"
 
+          # Check if source file exists
+          if [[ ! -f "central/.github/templates/pr_template.md" ]]; then
+            echo "Error: Template file not found"
+            exit 1
+          fi
+
+          # Extract YAML block
+          awk '/^```ya?ml[[:space:]]*$/{flag=1;next}/^```[[:space:]]*$/{flag=0}flag' central/.github/templates/pr_template.md > rollout-config.yaml
+
+          # Verify extraction worked
+          if [[ ! -s rollout-config.yaml ]]; then
+            echo "Error: Failed to extract YAML or file is empty"
+            exit 1
+          fi
+
+          echo "Saved rollout-config.yaml:"
+          cat rollout-config.yaml
+
           # Parse workflow file mapping
           WORKFLOW_SRC=$(yq -r '.workflow_file.src' rollout-config.yaml)
           WORKFLOW_DEST=$(yq -r '.workflow_file.dest' rollout-config.yaml)
