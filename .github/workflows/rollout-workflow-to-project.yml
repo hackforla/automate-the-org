@@ -84,7 +84,9 @@ jobs:
             DEST=$(echo "$item" | jq -r '.dest')
             
             # Resolve relative path from template directory
-            SRC_RESOLVED=$(cd central/.github/templates && realpath --relative-to="$GITHUB_WORKSPACE" "$SRC_RAW")
+            pushd central/.github/templates > /dev/null
+            SRC_RESOLVED=$(realpath --relative-to="$GITHUB_WORKSPACE" "$SRC_RAW")
+            popd > /dev/null
             
             # Append to resolved config file
             jq --arg src "$SRC_RESOLVED" --arg dest "$DEST" '. += [{src: $src, dest: $dest}]' config_files.json > config_files_temp.json
