@@ -15,7 +15,7 @@ config_files:
     dest: .github/workflow-configs/template/add-update-instructions-template.md
 ```
 -->
----
+
 ## Automated Workflow Setup
 
 This PR adds the {{ WORKFLOW_NAME }} GitHub Actions workflow to your project.
@@ -39,16 +39,16 @@ Monitors open, assigned issues with the default status "In progress (actively wo
 
 ### Security
 
-- Uses organization-managed GitHub App (secure, JIT tokens)  
+- Uses organization-managed, secure GitHub App with just-in-time token
 - Starts in dry-run mode (safe testing)  
 - No project-specific secrets needed
 
 ### Next Steps
 
 1. **Review configuration** in {{ WORKFLOW_FILE }}
-   - Adjust cron schedule
+   - Adjust cron schedule as needed for your project
    - Update `if: github.repository == 'hackforla/repo-name'`
-   - Customize reminder messages in 
+   - Customize reminder messages in `.github/workflow-configs/templates/add-update-instructions-template.md`
    - Set project-specific labels
 
 2. **Test in dry-run mode**
@@ -57,7 +57,7 @@ Monitors open, assigned issues with the default status "In progress (actively wo
    - Review logs to confirm which issues will be identified to see if this is what you expected.
 
 3. **Enable live mode** (when ready)
-   - Manually trigger with dry-run = false
+   - Manually trigger with `dry-run` = false
    - Otherwise, the automation will run at the next scheduled run time
 
 ---
