@@ -47,20 +47,13 @@ jobs:
       - name: Extract rollout config from PR template
         id: parse-config
         run: |
-          # Extract YAML block from .github/templates/pr_template.md into a temp YAML file
-          awk '/^```yaml/{flag=1;next}/^```$/{flag=0}flag' central/.github/templates/pr_template.md > rollout-config.yaml
-
-          echo "---- rollout-config.yaml ----"
-          cat rollout-config.yaml
-          echo "-----------------------------"
-
           # Check if source file exists
           if [[ ! -f "central/.github/templates/pr_template.md" ]]; then
             echo "Error: Template file not found"
             exit 1
           fi
 
-          # Extract YAML block
+          # Extract YAML/YML block from .github/templates/pr_template.md into a temp YAML file
           awk '/^```ya?ml[[:space:]]*$/{flag=1;next}/^```[[:space:]]*$/{flag=0}flag' central/.github/templates/pr_template.md > rollout-config.yaml
 
           # Verify extraction worked
@@ -75,18 +68,47 @@ jobs:
           # Parse workflow file mapping
           WORKFLOW_SRC=$(yq -r '.workflow_file.src' rollout-config.yaml)
           WORKFLOW_DEST=$(yq -r '.workflow_file.dest' rollout-config.yaml)
+          WORKFLOW_SRC=$(cd central/.github/templates && realpath --relative-to="$GITHUB_WORKSPACE" "$WORKFLOW_SRC_RAW")
+          
           echo "WORKFLOW_SRC=$WORKFLOW_SRC" >> $GITHUB_ENV
           echo "WORKFLOW_DEST=$WORKFLOW_DEST" >> $GITHUB_ENV
+          echo "Resolved workflow source path: $WORKFLOW_SRC"
 
           # Parse config_files into JSON for iteration
-          yq -o=json '.config_files' rollout-config.yaml > config_files.json
-          echo "Parsed config_files.json:"
+          yq -o=json '.config_files' rollout-config.yaml > config_files_raw.json
+          
+          # Resolve each path from the template's location
+          echo "[]" > config_files.json
+          cat config_files_raw.json | jq -c '.[]' | while read -r item; do
+            SRC_RAW=$(echo "$item" | jq -r '.src')
+            DEST=$(echo "$item" | jq -r '.dest')
+            
+            # Resolve relative path from template directory
+            SRC_RESOLVED=$(cd central/.github/templates && realpath --relative-to="$GITHUB_WORKSPACE" "$SRC_RAW")
+            
+            # Append to resolved config file
+            jq --arg src "$SRC_RESOLVED" --arg dest "$DEST" '. += [{src: $src, dest: $dest}]' config_files.json > config_files_temp.json
+            mv config_files_temp.json config_files.json
+          done
+          
+          echo "Parsed and resolved config_files.json:"
           cat config_files.json
 
       - name: Extract workflow name from workflow source
         run: |
           # The workflow source is relative to the central repo checkout
+          if [[ ! -f "$WORKFLOW_SRC" ]]; then
+            echo "Error: Workflow source file not found at $WORKFLOW_SRC"
+            exit 1
+          fi
+          
           WORKFLOW_NAME=$(grep -E '^name:' "$WORKFLOW_SRC" | sed 's/^name:[[:space:]]*//')
+          
+          if [[ -z "$WORKFLOW_NAME" ]]; then
+            echo "Error: Could not extract workflow name from $WORKFLOW_SRC"
+            exit 1
+          fi
+          
           echo "WORKFLOW_NAME=$WORKFLOW_NAME" >> $GITHUB_ENV
           echo "Workflow name: $WORKFLOW_NAME"
 
@@ -143,18 +165,25 @@ jobs:
             # ⓷ Create rollout branch
             git checkout -b "$ROLL_OUT_BRANCH"
 
-            # ⓸ Copy workflow file (from central checkout, WORKFLOW_SRC is relative to central repo)
+            # ⓸ Copy workflow file from workspace-relative path
             mkdir -p "$(dirname "$WORKFLOW_DEST")"
-            cp "../$WORKFLOW_SRC" "$WORKFLOW_DEST"
+            cp "$GITHUB_WORKSPACE/$WORKFLOW_SRC" "$WORKFLOW_DEST"
             echo "Copied workflow: $WORKFLOW_SRC -> $WORKFLOW_DEST"
 
-            # ⓹ Copy project-specific config files (from parsed JSON)
+            # ⓹ Copy project-specific config files using resolved paths
             if [ -s ../config_files.json ]; then
               cat ../config_files.json | jq -c '.[]' | while read -r item; do
                 SRC=$(echo "$item" | jq -r '.src')
                 DST=$(echo "$item" | jq -r '.dest')
+
+                # Verify source file exists
+                if [[ ! -f "$GITHUB_WORKSPACE/$SRC" ]]; then
+                  echo "Warning: Config file not found: $SRC (full path: $GITHUB_WORKSPACE/$SRC)"
+                  continue
+                fi
+
                 mkdir -p "$(dirname "$DST")"
-                cp "../$SRC" "$DST"
+                cp "$GITHUB_WORKSPACE/$SRC" "$DST"
                 echo "Copied config: $SRC -> $DST"
               done
             fi
@@ -169,7 +198,7 @@ jobs:
             git push origin "$ROLL_OUT_BRANCH"
 
             # ⓼ Create Pull Request
-            PR_BODY=$(cat central/.github/templates/pr-template.md)
+            PR_BODY=$(cat ../central/.github/templates/pr_template.md)
 
             # Substitute placeholders if needed (example replacements)
             PR_BODY=$(echo "$PR_BODY" \
@@ -184,7 +213,6 @@ jobs:
               --base "$DEFAULT_BRANCH" \
               --title "Install workflow: ${WORKFLOW_NAME}" \
               --body "$PR_BODY"
-
 
             # Cleanup for next repo
             cd ..
