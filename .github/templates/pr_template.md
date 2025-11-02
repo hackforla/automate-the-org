@@ -1,6 +1,6 @@
 <!--
 Source and destination filepaths
--->
+
 ```yml
 workflow_file:
   src: ../../example-configs/add-update-label-weekly.example.yml
@@ -14,6 +14,7 @@ config_files:
   - src: ../../example-configs/add-update-instructions-template.example.md
     dest: .github/workflow-configs/template/add-update-instructions-template.md
 ```
+-->
 ---
 ## Automated Workflow Setup
 
