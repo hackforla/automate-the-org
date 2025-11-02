@@ -114,7 +114,20 @@ jobs:
 
       - name: Extract workflow name from workflow source
         run: |
-          # FIX #3: Now $WORKFLOW_SRC is properly resolved, verify it exists
+          # Debug: Show the directory structure
+          echo "DEBUG: Checking directory structure..."
+          echo "Current directory: $(pwd)"
+          echo "WORKFLOW_SRC value: $WORKFLOW_SRC"
+          echo ""
+          echo "Contents of central/:"
+          ls -la central/ || echo "central/ not found"
+          echo ""
+          echo "Looking for example-configs or similar directories:"
+          find central/ -type d -name "*example*" -o -name "*config*" | head -20
+          echo ""
+          echo "Looking for .yml files in central/:"
+          find central/ -name "*.yml" -o -name "*.yaml" | head -20
+          
           if [[ ! -f "$WORKFLOW_SRC" ]]; then
             echo "Error: Workflow source file not found at $WORKFLOW_SRC"
             exit 1
