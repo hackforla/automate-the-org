@@ -65,16 +65,29 @@ jobs:
           echo "Saved rollout-config.yaml:"
           cat rollout-config.yaml
 
-          # Parse workflow file mapping
-          WORKFLOW_SRC=$(yq -r '.workflow_file.src' rollout-config.yaml)
+          # Parse workflow file mapping (these are relative to the template location)
+          WORKFLOW_SRC_RAW=$(yq -r '.workflow_file.src' rollout-config.yaml)
           WORKFLOW_DEST=$(yq -r '.workflow_file.dest' rollout-config.yaml)
-          WORKFLOW_SRC=$(cd central/.github/templates && realpath --relative-to="$GITHUB_WORKSPACE" "$WORKFLOW_SRC_RAW")
+          
+          echo "DEBUG: WORKFLOW_SRC_RAW=$WORKFLOW_SRC_RAW"
+          echo "DEBUG: WORKFLOW_DEST=$WORKFLOW_DEST"
+          
+          # Check if extraction was successful
+          if [[ "$WORKFLOW_SRC_RAW" == "null" ]] || [[ -z "$WORKFLOW_SRC_RAW" ]]; then
+            echo "Error: Failed to extract workflow_file.src from rollout-config.yaml"
+            exit 1
+          fi
+          
+          # Resolve the relative path from template location to actual file
+          WORKFLOW_SRC="central/.github/templates/$WORKFLOW_SRC_RAW"
+          # Normalize the path (remove .. segments)
+          WORKFLOW_SRC=$(python3 -c "import os; print(os.path.normpath('$WORKFLOW_SRC'))")
           
           echo "WORKFLOW_SRC=$WORKFLOW_SRC" >> $GITHUB_ENV
           echo "WORKFLOW_DEST=$WORKFLOW_DEST" >> $GITHUB_ENV
           echo "Resolved workflow source path: $WORKFLOW_SRC"
 
-          # Parse config_files into JSON for iteration
+          # First extract raw paths, then resolve them
           yq -o=json '.config_files' rollout-config.yaml > config_files_raw.json
           
           # Resolve each path from the template's location
@@ -83,10 +96,13 @@ jobs:
             SRC_RAW=$(echo "$item" | jq -r '.src')
             DEST=$(echo "$item" | jq -r '.dest')
             
+            echo "DEBUG: Resolving config file: $SRC_RAW -> $DEST"
+            
             # Resolve relative path from template directory
-            pushd central/.github/templates > /dev/null
-            SRC_RESOLVED=$(realpath --relative-to="$GITHUB_WORKSPACE" "$SRC_RAW")
-            popd > /dev/null
+            SRC_FULL="central/.github/templates/$SRC_RAW"
+            SRC_RESOLVED=$(python3 -c "import os; print(os.path.normpath('$SRC_FULL'))")
+            
+            echo "DEBUG: Resolved to: $SRC_RESOLVED"
             
             # Append to resolved config file
             jq --arg src "$SRC_RESOLVED" --arg dest "$DEST" '. += [{src: $src, dest: $dest}]' config_files.json > config_files_temp.json
@@ -98,7 +114,7 @@ jobs:
 
       - name: Extract workflow name from workflow source
         run: |
-          # The workflow source is relative to the central repo checkout
+          # FIX #3: Now $WORKFLOW_SRC is properly resolved, verify it exists
           if [[ ! -f "$WORKFLOW_SRC" ]]; then
             echo "Error: Workflow source file not found at $WORKFLOW_SRC"
             exit 1
@@ -167,7 +183,8 @@ jobs:
             # ⓷ Create rollout branch
             git checkout -b "$ROLL_OUT_BRANCH"
 
-            # ⓸ Copy workflow file from workspace-relative path
+            # ⓸ Copy workflow file using workspace-relative path
+            # $WORKFLOW_SRC is now relative to $GITHUB_WORKSPACE
             mkdir -p "$(dirname "$WORKFLOW_DEST")"
             cp "$GITHUB_WORKSPACE/$WORKFLOW_SRC" "$WORKFLOW_DEST"
             echo "Copied workflow: $WORKFLOW_SRC -> $WORKFLOW_DEST"
@@ -177,13 +194,13 @@ jobs:
               cat ../config_files.json | jq -c '.[]' | while read -r item; do
                 SRC=$(echo "$item" | jq -r '.src')
                 DST=$(echo "$item" | jq -r '.dest')
-
+                
                 # Verify source file exists
                 if [[ ! -f "$GITHUB_WORKSPACE/$SRC" ]]; then
                   echo "Warning: Config file not found: $SRC (full path: $GITHUB_WORKSPACE/$SRC)"
                   continue
                 fi
-
+                
                 mkdir -p "$(dirname "$DST")"
                 cp "$GITHUB_WORKSPACE/$SRC" "$DST"
                 echo "Copied config: $SRC -> $DST"
