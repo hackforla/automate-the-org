@@ -67,11 +67,8 @@ jobs:
 
           # Parse workflow file mapping (these are relative to the template location)
           WORKFLOW_SRC_RAW=$(yq -r '.workflow_file.src' rollout-config.yaml)
-          WORKFLOW_DEST=$(yq -r '.workflow_file.dest' rollout-config.yaml)
-          
-          echo "DEBUG: WORKFLOW_SRC_RAW=$WORKFLOW_SRC_RAW"
-          echo "DEBUG: WORKFLOW_DEST=$WORKFLOW_DEST"
-          
+          WORKFLOW_DEST=$(yq -r '.workflow_file.dest' rollout-config.yaml)      
+         
           # Check if extraction was successful
           if [[ "$WORKFLOW_SRC_RAW" == "null" ]] || [[ -z "$WORKFLOW_SRC_RAW" ]]; then
             echo "Error: Failed to extract workflow_file.src from rollout-config.yaml"
@@ -87,7 +84,7 @@ jobs:
           echo "WORKFLOW_DEST=$WORKFLOW_DEST" >> $GITHUB_ENV
           echo "Resolved workflow source path: $WORKFLOW_SRC"
 
-          # First extract raw paths, then resolve them
+          # Parse and resolve config_files paths
           yq -o=json '.config_files' rollout-config.yaml > config_files_raw.json
           
           # Resolve each path from the template's location
@@ -96,13 +93,9 @@ jobs:
             SRC_RAW=$(echo "$item" | jq -r '.src')
             DEST=$(echo "$item" | jq -r '.dest')
             
-            echo "DEBUG: Resolving config file: $SRC_RAW -> $DEST"
-            
             # Resolve relative path from template directory
             SRC_FULL="central/.github/templates/$SRC_RAW"
             SRC_RESOLVED=$(python3 -c "import os; print(os.path.normpath('$SRC_FULL'))")
-            
-            echo "DEBUG: Resolved to: $SRC_RESOLVED"
             
             # Append to resolved config file
             jq --arg src "$SRC_RESOLVED" --arg dest "$DEST" '. += [{src: $src, dest: $dest}]' config_files.json > config_files_temp.json
@@ -113,23 +106,11 @@ jobs:
           cat config_files.json
 
       - name: Extract workflow name from workflow source
-        run: |
-          # Debug: Show the directory structure
-          echo "DEBUG: Checking directory structure..."
-          echo "Current directory: $(pwd)"
-          echo "WORKFLOW_SRC value: $WORKFLOW_SRC"
-          echo ""
-          echo "Contents of central/:"
-          ls -la central/ || echo "central/ not found"
-          echo ""
-          echo "Looking for example-configs or similar directories:"
-          find central/ -type d -name "*example*" -o -name "*config*" | head -20
-          echo ""
-          echo "Looking for .yml files in central/:"
-          find central/ -name "*.yml" -o -name "*.yaml" | head -20
-          
+        run: |   
+          # Verify workflow source file exists
           if [[ ! -f "$WORKFLOW_SRC" ]]; then
             echo "Error: Workflow source file not found at $WORKFLOW_SRC"
+            echo "Expected path: $WORKFLOW_SRC"
             exit 1
           fi
           
