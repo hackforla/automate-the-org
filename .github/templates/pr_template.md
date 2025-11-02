@@ -3,12 +3,12 @@ Source and destination filepaths
 -->
 ```yml
 workflow_file:
-  src: ../../example-configs/add-update-labels-weekly.example.yml
-  dest: .github/workflows/add-update-labels-weekly.yml
+  src: ../../example-configs/add-update-label-weekly.example.yml
+  dest: .github/workflows/add-update-label-weekly.yml
 
 config_files:
-  - src: ../../example-configs/add-update-labels-weekly-configs.example.yml
-    dest: .github/workflow-configs/add-update-labels-weekly-configs.yml
+  - src: ../../example-configs/add-update-label-weekly-configs.example.yml
+    dest: .github/workflow-configs/add-update-label-weekly-configs.yml
   - src: ../../example-configs/label-directory.example.yml
     dest: .github/workflow-configs/label-directory.yml
   - src: ../../example-configs/add-update-instructions-template.example.md
