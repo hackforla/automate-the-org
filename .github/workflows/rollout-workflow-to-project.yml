@@ -128,6 +128,29 @@ jobs:
         env:
           APP_TOKEN: ${{ steps.generate-app-token.outputs.token }} 
         run: |
+          # Debug: Verify token exists and has correct format
+          if [[ -z "$APP_TOKEN" ]]; then
+            echo "Error: APP_TOKEN is empty"
+            exit 1
+          fi
+          echo "Token generated successfully (length: ${#APP_TOKEN})"
+          
+          IFS=',' read -ra REPOS <<< "$TARGET_REPOS"
+          for REPO in "${REPOS[@]}"; do
+            echo "Processing repo: $REPO . . ."
+            
+            export GH_TOKEN="$APP_TOKEN"
+            
+            # Test if we can access the repo first
+            if ! gh repo view "$REPO" 2>&1; then
+              echo "Error: Cannot access repository $REPO"
+              echo "Please verify:"
+              echo "  1. GitHub App is installed on this repo/org"
+              echo "  2. App has 'contents: write' permission"
+              echo "  3. App has access to this specific repository"
+              exit 1
+            fi
+            
           IFS=',' read -ra REPOS <<< "$TARGET_REPOS"
           for REPO in "${REPOS[@]}"; do
             echo "Processing repo: $REPO . . ."
