@@ -10,7 +10,7 @@ on:
       rollout_branch:
         description: 'Branch name created for PR for rollout'
         required: false
-        default: 'automation/rollout-add-central-workflow'
+        default: 'automation/rollout-central-workflow'
       dry_run:
         description: 'Dry-run mode: preview changes without creating PRs'
         type: boolean
@@ -102,7 +102,7 @@ jobs:
       - name: Prepare variables
         run: |
           echo "TARGET_REPOS=${{ github.event.inputs.target_repos }}" >> $GITHUB_ENV
-          echo "ROLL_OUT_BRANCH=${{ github.event.inputs.rollout_branch }}" >> $GITHUB_ENV
+          echo "ROLLOUT_BRANCH=${{ github.event.inputs.rollout_branch }}" >> $GITHUB_ENV
           echo "DRY_RUN=${{ github.event.inputs.dry_run }}" >> $GITHUB_ENV
 
       - name: Checkout the source workflows repo
@@ -214,7 +214,7 @@ jobs:
             # Only in 'DRY_RUN'mode
             if [ "$DRY_RUN" = "true" ]; then
               echo "[DRY-RUN] Would clone repo: $REPO (branch: $DEFAULT_BRANCH)"
-              echo "[DRY-RUN] Would create branch: $ROLL_OUT_BRANCH"
+              echo "[DRY-RUN] Would create branch: $ROLLOUT_BRANCH"
               echo "[DRY-RUN] Would copy workflow file: $WORKFLOW_SRC -> $WORKFLOW_DEST"
               
               # list config copies
@@ -229,7 +229,7 @@ jobs:
               fi
 
               echo "[DRY-RUN] Would commit changes: Install ${WORKFLOW_NAME} and project-specific files"
-              echo "[DRY-RUN] Would push branch: $ROLL_OUT_BRANCH"
+              echo "[DRY-RUN] Would push branch: $ROLLOUT_BRANCH"
               
               # read PR template for preview
               PR_BODY=$(cat central/.github/templates/pr_template.md)
@@ -264,18 +264,18 @@ jobs:
             cd temp-repo
 
             # ⓷ Create rollout branch is does not exist
-            if git ls-remote --heads origin "$ROLL_OUT_BRANCH" | grep -q "$ROLL_OUT_BRANCH"; then
-              echo "Branch $ROLL_OUT_BRANCH already exists remotely"
+            if git ls-remote --heads origin "$ROLLOUT_BRANCH" | grep -q "$ROLLOUT_BRANCH"; then
+              echo "Branch $ROLLOUT_BRANCH already exists remotely"
               
               # Checkout existing branch and pull latest
-              git fetch origin "$ROLL_OUT_BRANCH"
-              git checkout "$ROLL_OUT_BRANCH"
-              git pull origin "$ROLL_OUT_BRANCH"
+              git fetch origin "$ROLLOUT_BRANCH"
+              git checkout "$ROLLOUT_BRANCH"
+              git pull origin "$ROLLOUT_BRANCH"
               
               echo "Use existing branch and force push changes"
             else
-              echo "Creating new branch: $ROLL_OUT_BRANCH"
-              git checkout -b "$ROLL_OUT_BRANCH"
+              echo "Creating new branch: $ROLLOUT_BRANCH"
+              git checkout -b "$ROLLOUT_BRANCH"
             fi
 
             # ⓸ Copy workflow file using workspace-relative path
@@ -309,7 +309,7 @@ jobs:
             git commit -m "Install ${WORKFLOW_NAME} and project-specific files"
 
             # ⓻ Force push rollout branch
-            git push origin "$ROLL_OUT_BRANCH" --force
+            git push origin "$ROLLOUT_BRANCH" --force
 
             # ⓼ Create Pull Request
             PR_BODY=$(cat ../central/.github/templates/pr_template.md)
@@ -344,7 +344,7 @@ jobs:
 
             gh pr create \
               --repo $REPO \
-              --head "$ROLL_OUT_BRANCH" \
+              --head "$ROLLOUT_BRANCH" \
               --base "$DEFAULT_BRANCH" \
               --title "Install workflow: ${WORKFLOW_NAME}" \
               --body "$PR_BODY"
