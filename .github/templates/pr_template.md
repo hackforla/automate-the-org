@@ -7,8 +7,8 @@ workflow_file:
   dest: .github/workflows/add-update-label-weekly.yml
 
 config_files:
-  - src: ../../example-configs/add-update-label-weekly-configs.example.yml
-    dest: .github/workflow-configs/add-update-label-weekly-configs.yml
+  - src: ../../example-configs/add-update-label-weekly-config.example.yml
+    dest: .github/workflow-configs/add-update-label-weekly-config.yml
   - src: ../../example-configs/label-directory.example.yml
     dest: .github/workflow-configs/label-directory.yml
   - src: ../../example-configs/add-update-instructions-template.example.md
@@ -18,12 +18,12 @@ config_files:
 
 ## Automated Workflow Setup
 
-This PR adds the {{ WORKFLOW_NAME }} GitHub Actions workflow to your project.
+This PR adds the {{WORKFLOW_NAME}} GitHub Actions workflow to your project.
 
 ### What's Being Added
 
-- **Workflow file**: {{ WORKFLOW_FILE }}
-- **Configuration files**: {{ CONFIG_FILES }}
+- **Workflow file**: {{WORKFLOW_FILE}}
+- **Configuration files**: {{CONFIG_FILES}}
 
 - **Documentation** (soon)
   - Complete setup instructions
@@ -45,7 +45,7 @@ Monitors open, assigned issues with the default status "In progress (actively wo
 
 ### Next Steps
 
-1. **Review configuration** in {{ WORKFLOW_FILE }}
+1. **Review configuration** in {{WORKFLOW_FILE}}
    - Adjust cron schedule as needed for your project
    - Update `if: github.repository == 'hackforla/repo-name'`
    - Customize reminder messages in `.github/workflow-configs/templates/add-update-instructions-template.md`
