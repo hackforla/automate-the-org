@@ -8,6 +8,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug secrets format
+        run: |
+          echo "App ID length: ${#HFLA_WORKFLOW_APP_ID}"
+          echo "App ID starts with: ${HFLA_WORKFLOW_APP_ID:0:3}"
+          echo "Private key length: ${#HFLA_WORKFLOW_APP_PRIVATE_KEY}"
+          echo "Private key starts with: ${HFLA_WORKFLOW_APP_PRIVATE_KEY:0:30}"
+          echo "Private key ends with: ${HFLA_WORKFLOW_APP_PRIVATE_KEY: -30}"
+        env:
+          HFLA_WORKFLOW_APP_ID: ${{ secrets.HFLA_WORKFLOW_APP_ID }}
+          HFLA_WORKFLOW_APP_PRIVATE_KEY: ${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}
+    
       - name: Generate token from GitHub App
         id: generate_token
         uses: actions/create-github-app-token@v1
