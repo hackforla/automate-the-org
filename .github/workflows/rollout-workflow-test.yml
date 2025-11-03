@@ -1,0 +1,323 @@
+name: Rollout Workflow to Project(s) TEST
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repos:
+        description: 'Provide a comma-separated list of the target project/repos (e.g. "hackforla/project1", "hackforla/project2")'
+        required: true
+        type: string
+      rollout_branch:
+        description: 'Branch name created for PR for rollout'
+        required: false
+        default: 'rollout-add-central-workflow'
+      dry_run:
+        description: 'Dry-run mode: preview changes without creating PRs'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  
+jobs:
+  rollout:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate token from GitHub App
+        id: generate-app-token
+        run: |
+          # Install jwt-cli if not available (lightweight JWT tool)
+          if ! command -v jwt &> /dev/null; then
+            echo "Installing jwt-cli..."
+            npm install -g jwt-cli
+          fi
+          
+          # Save private key temporarily
+          echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > private-key.pem
+          
+          # Generate JWT
+          NOW=$(date +%s)
+          IAT=$((NOW - 60))
+          EXP=$((NOW + 600))
+          
+          HEADER='{"alg":"RS256","typ":"JWT"}'
+          PAYLOAD="{\"iat\":${IAT},\"exp\":${EXP},\"iss\":\"${{ secrets.HFLA_WORKFLOW_APP_ID }}\"}"
+          
+          # Create JWT using OpenSSL
+          HEADER_B64=$(echo -n "$HEADER" | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
+          PAYLOAD_B64=$(echo -n "$PAYLOAD" | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
+          SIGNATURE=$(echo -n "${HEADER_B64}.${PAYLOAD_B64}" | openssl dgst -sha256 -sign private-key.pem | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
+          JWT="${HEADER_B64}.${PAYLOAD_B64}.${SIGNATURE}"
+          
+          # Get installation ID
+          INSTALLATION_ID=$(curl -s -H "Authorization: Bearer ${JWT}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/orgs/hackforla/installation" | jq -r '.id')
+          
+          if [[ "$INSTALLATION_ID" == "null" ]] || [[ -z "$INSTALLATION_ID" ]]; then
+            echo "Error: Could not get installation ID"
+            echo "Make sure the GitHub App is installed on the hackforla organization"
+            rm private-key.pem
+            exit 1
+          fi
+          
+          echo "Installation ID: $INSTALLATION_ID"
+          
+          # Get installation access token
+          TOKEN_RESPONSE=$(curl -s -X POST \
+            -H "Authorization: Bearer ${JWT}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/app/installations/${INSTALLATION_ID}/access_tokens")
+          
+          APP_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token')
+          
+          if [[ "$APP_TOKEN" == "null" ]] || [[ -z "$APP_TOKEN" ]]; then
+            echo "Error: Could not generate access token"
+            echo "Response: $TOKEN_RESPONSE"
+            rm private-key.pem
+            exit 1
+          fi
+          
+          # Clean up
+          rm private-key.pem
+          
+          # Output token
+          echo "token=$APP_TOKEN" >> $GITHUB_OUTPUT
+          echo "✓ Token generated successfully"
+
+      - name: Verify token generation
+        run: |
+          if [[ -z "${{ steps.generate-app-token.outputs.token }}" ]]; then
+            echo "Error: GitHub App token generation failed"
+            echo "Please verify:"
+            echo "  1. HFLA_WORKFLOW_APP_ID secret is set correctly"
+            echo "  2. HFLA_WORKFLOW_APP_PRIVATE_KEY secret is set correctly"
+            echo "  3. The private key is in the correct format (PEM)"
+            exit 1
+          fi
+          echo "✓ Token generated successfully"
+
+      - name: Prepare variables
+        run: |
+          echo "TARGET_REPOS=${{ github.event.inputs.target_repos }}" >> $GITHUB_ENV
+          echo "ROLL_OUT_BRANCH=${{ github.event.inputs.rollout_branch }}" >> $GITHUB_ENV
+          echo "DRY_RUN=${{ github.event.inputs.dry_run }}" >> $GITHUB_ENV
+
+      - name: Checkout the source workflows repo
+        uses: actions/checkout@v5
+        with:
+          repository: hackforla/automate-the-org
+          path: central
+
+      - name: Extract rollout config from PR template
+        id: parse-config
+        run: |
+          # Check if source file exists
+          if [[ ! -f "central/.github/templates/pr_template.md" ]]; then
+            echo "Error: Template file not found"
+            exit 1
+          fi
+
+          # Extract YAML/YML block from .github/templates/pr_template.md into a temp YAML file
+          awk '/^```ya?ml[[:space:]]*$/{flag=1;next}/^```[[:space:]]*$/{flag=0}flag' central/.github/templates/pr_template.md > rollout-config.yaml
+
+          # Verify extraction worked
+          if [[ ! -s rollout-config.yaml ]]; then
+            echo "Error: Failed to extract YAML or file is empty"
+            exit 1
+          fi
+
+          echo "Saved rollout-config.yaml:"
+          cat rollout-config.yaml
+
+          # Parse workflow file mapping (these are relative to the template location)
+          WORKFLOW_SRC_RAW=$(yq -r '.workflow_file.src' rollout-config.yaml)
+          WORKFLOW_DEST=$(yq -r '.workflow_file.dest' rollout-config.yaml)
+          
+          # Validate extraction
+          if [[ "$WORKFLOW_SRC_RAW" == "null" ]] || [[ -z "$WORKFLOW_SRC_RAW" ]]; then
+            echo "Error: Failed to extract workflow_file.src from rollout-config.yaml"
+            exit 1
+          fi
+          
+          # Resolve the relative path from template location to actual file
+          # Template is at: central/.github/templates/pr_template.md
+          # WORKFLOW_SRC_RAW is relative to that location (e.g., ../../example-configs/file.yml)
+          WORKFLOW_SRC="central/.github/templates/$WORKFLOW_SRC_RAW"
+          WORKFLOW_SRC=$(python3 -c "import os; print(os.path.normpath('$WORKFLOW_SRC'))")
+          
+          echo "WORKFLOW_SRC=$WORKFLOW_SRC" >> $GITHUB_ENV
+          echo "WORKFLOW_DEST=$WORKFLOW_DEST" >> $GITHUB_ENV
+          echo "Resolved workflow source path: $WORKFLOW_SRC"
+
+          # Parse and resolve config_files paths
+          yq -o=json '.config_files' rollout-config.yaml > config_files_raw.json
+          
+          echo "[]" > config_files.json
+          cat config_files_raw.json | jq -c '.[]' | while read -r item; do
+            SRC_RAW=$(echo "$item" | jq -r '.src')
+            DEST=$(echo "$item" | jq -r '.dest')
+            
+            # Resolve relative path from template directory
+            SRC_FULL="central/.github/templates/$SRC_RAW"
+            SRC_RESOLVED=$(python3 -c "import os; print(os.path.normpath('$SRC_FULL'))")
+            
+            # Append to resolved config file
+            jq --arg src "$SRC_RESOLVED" --arg dest "$DEST" '. += [{src: $src, dest: $dest}]' config_files.json > config_files_temp.json
+            mv config_files_temp.json config_files.json
+          done
+          
+          echo "Parsed and resolved config_files.json:"
+          cat config_files.json
+
+      - name: Extract workflow name from workflow source
+        run: |
+          # Verify workflow source file exists
+          if [[ ! -f "$WORKFLOW_SRC" ]]; then
+            echo "Error: Workflow source file not found at $WORKFLOW_SRC"
+            echo "Expected path: $WORKFLOW_SRC"
+            exit 1
+          fi
+          
+          WORKFLOW_NAME=$(grep -E '^name:' "$WORKFLOW_SRC" | sed 's/^name:[[:space:]]*//')
+          
+          if [[ -z "$WORKFLOW_NAME" ]]; then
+            echo "Error: Could not extract workflow name from $WORKFLOW_SRC"
+            exit 1
+          fi
+          
+          echo "WORKFLOW_NAME=$WORKFLOW_NAME" >> $GITHUB_ENV
+          echo "Workflow name: $WORKFLOW_NAME"
+
+      - name: Rollout to each repo
+        env:
+          APP_TOKEN: ${{ steps.generate-app-token.outputs.token }} 
+        run: |
+          IFS=',' read -ra REPOS <<< "$TARGET_REPOS"
+          for REPO in "${REPOS[@]}"; do
+            echo "Processing repo: $REPO . . ."
+            
+            export GH_TOKEN="$APP_TOKEN"
+            
+            # Verify we can access the repo via API
+            if ! gh repo view "$REPO" &>/dev/null; then
+              echo "Error: Cannot access repository $REPO via GitHub API"
+              exit 1
+            fi
+            
+            # ⓵ Get default branch
+            DEFAULT_BRANCH=$(gh api repos/$REPO --jq '.default_branch')
+            echo "Default branch: $DEFAULT_BRANCH"
+
+            # Only in 'DRY_RUN'mode
+            if [ "$DRY_RUN" = "true" ]; then
+              echo "[DRY-RUN] Would clone repo: $REPO (branch: $DEFAULT_BRANCH)"
+              echo "[DRY-RUN] Would create branch: $ROLL_OUT_BRANCH"
+              echo "[DRY-RUN] Would copy workflow file: $WORKFLOW_SRC -> $WORKFLOW_DEST"
+              
+              # list config copies
+              if [ -s config_files.json ]; then
+                cat config_files.json | jq -c '.[]' | while read -r item; do
+                  SRC=$(echo "$item" | jq -r '.src')
+                  DEST=$(echo "$item" | jq -r '.dest')
+                  echo "[DRY-RUN] Would copy config file: $SRC -> $DEST"
+                done
+              else
+                echo "[DRY-RUN] No config files listed."
+              fi
+
+              echo "[DRY-RUN] Would commit changes: Install ${WORKFLOW_NAME} and project-specific files"
+              echo "[DRY-RUN] Would push branch: $ROLL_OUT_BRANCH"
+              
+              # read PR template for preview
+              PR_BODY=$(cat central/.github/templates/pr_template.md)
+              echo "[DRY-RUN] PR body preview:"
+              echo "----------------------------------"
+              echo "$PR_BODY"
+              echo "----------------------------------"
+
+              echo "[DRY-RUN] Would create PR titled: Install workflow: ${WORKFLOW_NAME}"
+              continue
+            fi
+
+            # ⓶ Clone the target repository
+            echo "Cloning repository: $REPO (branch: $DEFAULT_BRANCH)"
+            
+            # Configure git to use the token
+            git config --global credential.helper store
+            echo "https://x-access-token:${APP_TOKEN}@github.com" > ~/.git-credentials
+            
+            # Clone with error handling
+            if ! git clone --depth 1 --branch "$DEFAULT_BRANCH" "https://github.com/${REPO}" temp-repo 2>&1; then
+              echo "Error: Failed to clone repository $REPO"
+              echo "This usually means:"
+              echo "  1. The GitHub App is not installed on this repository"
+              echo "  2. The App doesn't have 'contents: write' permission"
+              echo "  3. The repository doesn't exist or is private without access"
+              echo ""
+              echo "To fix: Install the GitHub App on $REPO with 'contents: write' permission"
+              exit 1
+            fi
+            
+            cd temp-repo
+
+            # ⓷ Create rollout branch
+            git checkout -b "$ROLL_OUT_BRANCH"
+
+            # FIX #4: Copy workflow file using workspace-relative path
+            # $WORKFLOW_SRC is now relative to $GITHUB_WORKSPACE
+            mkdir -p "$(dirname "$WORKFLOW_DEST")"
+            cp "$GITHUB_WORKSPACE/$WORKFLOW_SRC" "$WORKFLOW_DEST"
+            echo "Copied workflow: $WORKFLOW_SRC -> $WORKFLOW_DEST"
+
+            # FIX #5: Copy project-specific config files using resolved paths
+            if [ -s ../config_files.json ]; then
+              cat ../config_files.json | jq -c '.[]' | while read -r item; do
+                SRC=$(echo "$item" | jq -r '.src')
+                DST=$(echo "$item" | jq -r '.dest')
+                
+                # Verify source file exists
+                if [[ ! -f "$GITHUB_WORKSPACE/$SRC" ]]; then
+                  echo "Warning: Config file not found: $SRC (full path: $GITHUB_WORKSPACE/$SRC)"
+                  continue
+                fi
+                
+                mkdir -p "$(dirname "$DST")"
+                cp "$GITHUB_WORKSPACE/$SRC" "$DST"
+                echo "Copied config: $SRC -> $DST"
+              done
+            fi
+
+            # ⓺ Commit changes
+            git config user.name "Central Rollout Bot"
+            git config user.email "rollout-bot@hackforla.org"
+            git add .
+            git commit -m "Install ${WORKFLOW_NAME} and project-specific files"
+
+            # ⓻ Push rollout branch
+            git push origin "$ROLL_OUT_BRANCH"
+
+            # ⓼ Create Pull Request
+            PR_BODY=$(cat ../central/.github/templates/pr_template.md)
+
+            # Substitute placeholders if needed (example replacements)
+            PR_BODY=$(echo "$PR_BODY" \
+              | sed "s/{{WORKFLOW_NAME}}/${WORKFLOW_NAME}/g" \
+              | sed "s/{{TRIGGERED_BY}}/@${{ github.actor }}/g" \
+              | sed "s/{{TIMESTAMP}}/$(date -u +"%Y-%m-%dT%H:%M:%SZ")/g"
+            )
+
+            gh pr create \
+              --repo $REPO \
+              --head "$ROLL_OUT_BRANCH" \
+              --base "$DEFAULT_BRANCH" \
+              --title "Install workflow: ${WORKFLOW_NAME}" \
+              --body "$PR_BODY"
+
+
+            # Cleanup for next repo
+            cd ..
+            rm -rf temp-repo
+          done
