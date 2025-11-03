@@ -142,12 +142,8 @@ jobs:
             export GH_TOKEN="$APP_TOKEN"
             
             # Test if we can access the repo first
-            if ! gh repo view "$REPO" 2>&1; then
-              echo "Error: Cannot access repository $REPO"
-              echo "Please verify:"
-              echo "  1. GitHub App is installed on this repo/org"
-              echo "  2. App has 'contents: write' permission"
-              echo "  3. App has access to this specific repository"
+            if ! gh repo view "$REPO" &>/dev/null; then
+              echo "Error: Cannot access repository $REPO via GitHub API"
               exit 1
             fi
             
@@ -189,7 +185,25 @@ jobs:
             fi
 
             # ⓶ Continue with clone default branch
-            git clone --depth 1 --branch "$DEFAULT_BRANCH" https://x-access-token:${APP_TOKEN}@github.com/${REPO} temp-repo
+            # git clone --depth 1 --branch "$DEFAULT_BRANCH" https://x-access-token:${APP_TOKEN}@github.com/${REPO} temp-repo
+            echo "Cloning repository: $REPO (branch: $DEFAULT_BRANCH)"
+
+            # Configure git to use the token
+            git config --global credential.helper store
+            echo "https://x-access-token:${APP_TOKEN}@github.com" > ~/.git-credentials
+            
+            # Clone with error handling
+            if ! git clone --depth 1 --branch "$DEFAULT_BRANCH" "https://github.com/${REPO}" temp-repo 2>&1; then
+              echo "Error: Failed to clone repository $REPO"
+              echo "This usually means:"
+              echo "  1. The GitHub App is not installed on this repository"
+              echo "  2. The App doesn't have 'contents: write' permission"
+              echo "  3. The repository doesn't exist or is private without access"
+              echo ""
+              echo "To fix: Install the GitHub App on $REPO with 'contents: write' permission"
+              exit 1
+            fi
+            
             cd temp-repo
 
             # ⓷ Create rollout branch
