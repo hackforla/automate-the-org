@@ -32,7 +32,7 @@ jobs:
           
       - name: Debug - Check App Installation
         env:
-          GH_TOKEN: ${{ steps.generate-app-token.outputs.token }}
+          GH_TOKEN: ${{ steps.generate_other_token.outputs.token }}
         run: |
           echo "Checking if GitHub App is installed on hackforla/website..."
           if gh api /repos/hackforla/website/installation --jq '.id' 2>&1; then
@@ -54,7 +54,7 @@ jobs:
           
       - name: Debug GitHub App Access
         env:
-          APP_TOKEN: ${{ steps.generate-app-token.outputs.token }}
+          APP_TOKEN: ${{ steps.generate_other_token.outputs.token }}
         run: |
           echo "Testing GitHub App access..."
           export GH_TOKEN="$APP_TOKEN"
