@@ -37,3 +37,18 @@ jobs:
           echo "Testing if token works by fetching repo info..."
           gh api /repos/${{ github.repository }}
           echo "Success! WORKFLOW token is working."
+          
+      - name: Debug GitHub App Access
+        env:
+          APP_TOKEN: ${{ steps.generate-app-token.outputs.token }}
+        run: |
+          echo "Testing GitHub App access..."
+          export GH_TOKEN="$APP_TOKEN"
+          
+          # Test API access
+          echo "Attempting to access hackforla/website via API..."
+          gh api repos/hackforla/website --jq '.full_name,.permissions' || echo "API access failed"
+          
+          # Show token metadata (without exposing the token)
+          echo "Token starts with: ghs_..." 
+          echo "Token length: ${#APP_TOKEN}"
