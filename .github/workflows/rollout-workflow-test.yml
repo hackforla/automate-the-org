@@ -10,7 +10,7 @@ on:
       rollout_branch:
         description: 'Branch name created for PR for rollout'
         required: false
-        default: 'rollout-add-central-workflow'
+        default: 'automation/rollout-add-central-workflow'
       dry_run:
         description: 'Dry-run mode: preview changes without creating PRs'
         type: boolean
