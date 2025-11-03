@@ -14,13 +14,33 @@ on:
         default: true
 
 jobs:
+  # 1. Job to parse the multi-line input into a JSON array for the matrix
+  parse_inputs:
+    runs-on: ubuntu-latest
+    outputs:
+      repo_matrix: ${{ steps.prepare.outputs.repos }} # Pass the output to the next job
+    steps:
+      - name: 📝 Prepare Matrix List from Input
+        id: prepare
+        run: |
+          # Use the 'jq' tool (pre-installed on runners) to format the multiline input as a JSON array.
+          # The 'tr' command replaces newlines (\n) with spaces first, then jq processes it.
+          REPOS_JSON=$(echo "${{ github.event.inputs.target_repos }}" | tr '\n' ' ' | jq -R 'split(" ") | map(select(length > 0))')
+          
+          # Set the output variable
+          echo "repos=$REPOS_JSON" >> $GITHUB_OUTPUT
+          echo "Matrix input prepared: $REPOS_JSON"
+
+  # 2. The main rollout job, now dependent on the parser job
   rollout:
     runs-on: ubuntu-latest
+    needs: parse_inputs # Wait for the parsing job to finish
     
     strategy:
       fail-fast: false
       matrix:
-        target_repo: ${{ fromJson(format('["{0}"]', replace(github.event.inputs.target_repos, '\n', '", "'))) }}
+        # Consume the JSON output from the previous job
+        target_repo: ${{ fromJson(needs.parse_inputs.outputs.repo_matrix) }}
 
     # Use the current matrix item as the environment variable
     env:
@@ -32,7 +52,7 @@ jobs:
       - name: ⬇️ Checkout Source Repository (Repo A)
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 
+          fetch-depth: 0
           
       # Log the dry_run status at the start of the job
       - name: 📝 Log Dry Run Status
