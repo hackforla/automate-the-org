@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target_repos:
-        description: 'Provide a comma-separated list of the target repos, e.g. "org/project1", "org/project2")'
+        description: 'Provide a comma-separated list of the target repos, e.g. "org/project1", "org/project2", etc.'
         required: true
         type: string
       rollout_branch:
@@ -28,14 +28,7 @@ jobs:
       - name: Generate token from GitHub App
         id: generate-app-token
         run: |
-          # Install jwt-cli if not available (lightweight JWT tool)
-          if ! command -v jwt &> /dev/null; then
-            echo "Installing jwt-cli..."
-            npm install -g jwt-cli
-          fi
-          
-          # Save private key temporarily
-          echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > private-key.pem
+          # ------------> FUTURE: Generalize GitHub Apps
           
           # Generate JWT
           NOW=$(date +%s)
@@ -48,7 +41,9 @@ jobs:
           # Create JWT using OpenSSL
           HEADER_B64=$(echo -n "$HEADER" | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
           PAYLOAD_B64=$(echo -n "$PAYLOAD" | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
-          SIGNATURE=$(echo -n "${HEADER_B64}.${PAYLOAD_B64}" | openssl dgst -sha256 -sign private-key.pem | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
+          SIGNATURE=$(echo -n "${HEADER_B64}.${PAYLOAD_B64}" | \
+            openssl dgst -sha256 -sign <(echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}") | \
+            openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
           JWT="${HEADER_B64}.${PAYLOAD_B64}.${SIGNATURE}"
           
           # Get installation ID
@@ -58,8 +53,7 @@ jobs:
           
           if [[ "$INSTALLATION_ID" == "null" ]] || [[ -z "$INSTALLATION_ID" ]]; then
             echo "Error: Could not get installation ID"
-            echo "Make sure the GitHub App is installed on the hackforla organization"
-            rm private-key.pem
+            echo "Make sure the GitHub App is installed on the organization"
             exit 1
           fi
           
@@ -76,28 +70,23 @@ jobs:
           if [[ "$APP_TOKEN" == "null" ]] || [[ -z "$APP_TOKEN" ]]; then
             echo "Error: Could not generate access token"
             echo "Response: $TOKEN_RESPONSE"
-            rm private-key.pem
             exit 1
           fi
           
-          # Clean up
-          rm private-key.pem
+          # Mask token in logs
+          echo "::add-mask::$APP_TOKEN"
           
           # Output token
           echo "token=$APP_TOKEN" >> $GITHUB_OUTPUT
-          echo "✓ Token generated successfully"
+          echo "Token generated successfully"
 
       - name: Verify token generation
         run: |
           if [[ -z "${{ steps.generate-app-token.outputs.token }}" ]]; then
             echo "Error: GitHub App token generation failed"
-            echo "Please verify:"
-            echo "  1. HFLA_WORKFLOW_APP_ID secret is set correctly"
-            echo "  2. HFLA_WORKFLOW_APP_PRIVATE_KEY secret is set correctly"
-            echo "  3. The private key is in the correct format (PEM)"
             exit 1
           fi
-          echo "✓ Token generated successfully"
+          echo "Token generated successfully"
 
       - name: Prepare variables
         run: |
@@ -245,24 +234,22 @@ jobs:
             # ⓶ Clone the target repository
             echo "Cloning repository: $REPO (branch: $DEFAULT_BRANCH)"
             
-            # Configure git to use the token
-            git config --global credential.helper store
-            echo "https://x-access-token:${APP_TOKEN}@github.com" > ~/.git-credentials
-            
-            # Clone with error handling
-            if ! git clone --depth 1 --branch "$DEFAULT_BRANCH" "https://github.com/${REPO}" temp-repo 2>&1; then
+            # Clone with token authentication
+            if ! git clone --depth 1 --branch "$DEFAULT_BRANCH" \
+              "https://x-access-token:${APP_TOKEN}@github.com/${REPO}" temp-repo 2>&1; then
               echo "Error: Failed to clone repository $REPO"
-              echo "This usually means:"
-              echo "  1. The GitHub App is not installed on this repository"
-              echo "  2. The App doesn't have 'contents: write' permission"
-              echo "  3. The repository doesn't exist or is private without access"
-              echo ""
-              echo "To fix: Install the GitHub App on $REPO with 'contents: write' permission"
               exit 1
             fi
             
             cd temp-repo
-
+            
+            # ------------> FUTURE: Generalize email
+            
+            # Configure git to use token for authenticated operations
+            git config user.name "Central Rollout Bot"
+            git config user.email "rollout-bot@hackforla.org"
+            git remote set-url origin "https://x-access-token:${APP_TOKEN}@github.com/${REPO}"
+            
             # ⓷ Create rollout branch is does not exist
             if git ls-remote --heads origin "$ROLLOUT_BRANCH" | grep -q "$ROLLOUT_BRANCH"; then
               echo "Branch $ROLLOUT_BRANCH already exists remotely"
@@ -302,10 +289,12 @@ jobs:
               done
             fi
 
-            # ⓺ Commit changes
-            git config user.name "Central Rollout Bot"
-            git config user.email "rollout-bot@hackforla.org"
+            # ⓺ Commit if there are changes
             git add .
+            if git diff --staged --quiet; then
+              echo "No changes to commit - workflow already up to date"
+              exit 0
+            fi
             git commit -m "Install ${WORKFLOW_NAME} and project-specific files"
 
             # ⓻ Force push rollout branch
@@ -313,34 +302,6 @@ jobs:
 
             # ⓼ Create Pull Request
             PR_BODY=$(cat ../central/.github/templates/pr_template_add_update.md)
-
-            # Build CONFIG_FILES list for template
-            CONFIG_FILES_LIST=""
-            if [ -s ../config_files.json ]; then
-              CONFIG_FILES_LIST=$(cat ../config_files.json | jq -r '.[] | "- `" + .dest + "`"' | tr '\n' '\n')
-            fi
-
-            # Substitute placeholders
-            PR_BODY=$(echo "$PR_BODY" \
-              | sed "s|{{ WORKFLOW_NAME }}|${WORKFLOW_NAME}|g" \
-              | sed "s|{{WORKFLOW_NAME}}|${WORKFLOW_NAME}|g" \
-              | sed "s|{{ WORKFLOW_FILE }}|${WORKFLOW_DEST}|g" \
-              | sed "s|{{WORKFLOW_FILE}}|${WORKFLOW_DEST}|g" \
-              | sed "s|{{TRIGGERED_BY}}|@${{ github.actor }}|g" \
-              | sed "s|{{ TRIGGERED_BY }}|@${{ github.actor }}|g" \
-              | sed "s|{{TIMESTAMP}}|$(date -u +"%Y-%m-%dT%H:%M:%SZ")|g" \
-              | sed "s|{{ TIMESTAMP }}|$(date -u +"%Y-%m-%dT%H:%M:%SZ")|g"
-            )
-            
-            # Replace CONFIG_FILES placeholder with the list
-            # Using awk because sed has issues with multi-line replacements
-            PR_BODY=$(echo "$PR_BODY" | awk -v files="$CONFIG_FILES_LIST" '{
-              if ($0 ~ /\{\{ CONFIG_FILES \}\}/ || $0 ~ /\{\{CONFIG_FILES\}\}/) {
-                print files
-              } else {
-                print $0
-              }
-            }')
 
             gh pr create \
               --repo $REPO \
