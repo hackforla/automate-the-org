@@ -302,12 +302,33 @@ jobs:
             # ⓼ Create Pull Request
             PR_BODY=$(cat ../central/.github/templates/pr_template.md)
 
-            # Substitute placeholders if needed (example replacements)
+            # Build CONFIG_FILES list for template
+            CONFIG_FILES_LIST=""
+            if [ -s ../config_files.json ]; then
+              CONFIG_FILES_LIST=$(cat ../config_files.json | jq -r '.[] | "- `" + .dest + "`"' | tr '\n' '\n')
+            fi
+
+            # Substitute placeholders
             PR_BODY=$(echo "$PR_BODY" \
-              | sed "s/{{WORKFLOW_NAME}}/${WORKFLOW_NAME}/g" \
-              | sed "s/{{TRIGGERED_BY}}/@${{ github.actor }}/g" \
-              | sed "s/{{TIMESTAMP}}/$(date -u +"%Y-%m-%dT%H:%M:%SZ")/g"
+              | sed "s|{{ WORKFLOW_NAME }}|${WORKFLOW_NAME}|g" \
+              | sed "s|{{WORKFLOW_NAME}}|${WORKFLOW_NAME}|g" \
+              | sed "s|{{ WORKFLOW_FILE }}|${WORKFLOW_DEST}|g" \
+              | sed "s|{{WORKFLOW_FILE}}|${WORKFLOW_DEST}|g" \
+              | sed "s|{{TRIGGERED_BY}}|@${{ github.actor }}|g" \
+              | sed "s|{{ TRIGGERED_BY }}|@${{ github.actor }}|g" \
+              | sed "s|{{TIMESTAMP}}|$(date -u +"%Y-%m-%dT%H:%M:%SZ")|g" \
+              | sed "s|{{ TIMESTAMP }}|$(date -u +"%Y-%m-%dT%H:%M:%SZ")|g"
             )
+            
+            # Replace CONFIG_FILES placeholder with the list
+            # Using awk because sed has issues with multi-line replacements
+            PR_BODY=$(echo "$PR_BODY" | awk -v files="$CONFIG_FILES_LIST" '{
+              if ($0 ~ /\{\{ CONFIG_FILES \}\}/ || $0 ~ /\{\{CONFIG_FILES\}\}/) {
+                print files
+              } else {
+                print $0
+              }
+            }')
 
             gh pr create \
               --repo $REPO \
@@ -315,7 +336,6 @@ jobs:
               --base "$DEFAULT_BRANCH" \
               --title "Install workflow: ${WORKFLOW_NAME}" \
               --body "$PR_BODY"
-
 
             # Cleanup for next repo
             cd ..
