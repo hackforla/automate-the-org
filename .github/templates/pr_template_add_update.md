@@ -13,7 +13,7 @@ config_files:
   - src: ../../example-configs/label-directory.example.yml
     dest: .github/workflow-configs/label-directory.yml
   - src: ../../example-configs/add-update-instructions-template.example.md
-    dest: .github/workflow-configs/template/add-update-instructions-template.md
+    dest: .github/workflow-configs/templates/add-update-instructions-template.md
 ```
 -->
 
@@ -28,7 +28,7 @@ This PR adds the "Add Update Label Weekly" GitHub Actions workflow to your proje
 - **Configuration files**:
   - `.github/workflow-configs/add-update-label-weekly-config.yml`
   - `.github/workflow-configs/label-directory.yml`
-  - `.github/workflow-configs/template/add-update-instructions-template.md`
+  - `.github/workflow-configs/templates/add-update-instructions-template.md`
 
 ### What This Workflow Does
 
