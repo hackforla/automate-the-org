@@ -8,6 +8,22 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Manual JWT generation (debug)
+        run: |
+          # Save private key to file
+          echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > private-key.pem
+          
+          # Check if file is valid
+          if openssl rsa -in private-key.pem -check -noout; then
+            echo "✓ Private key file is valid"
+          else
+            echo "✗ Private key file is invalid"
+            exit 1
+          fi
+          
+          # Clean up
+          rm private-key.pem
+    
       - name: Debug secrets format
         run: |
           echo "App ID length: ${#HFLA_WORKFLOW_APP_ID}"
