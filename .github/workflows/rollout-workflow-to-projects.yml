@@ -1,4 +1,4 @@
-name: Rollout Workflow to Project(s) TEST
+name: Rollout Workflow to Project(s)
 
 on:
   workflow_dispatch:
