@@ -151,11 +151,6 @@ jobs:
               exit 1
             fi
             
-          IFS=',' read -ra REPOS <<< "$TARGET_REPOS"
-          for REPO in "${REPOS[@]}"; do
-            echo "Processing repo: $REPO . . ."
-            
-            export GH_TOKEN="$APP_TOKEN"
             gh repo view "$REPO"
             
             # ⓵ Get default branch
