@@ -1,4 +1,4 @@
-name: 'Automated Central Workflow Rollout'
+name: 'Automated Central Workflow Rollout- TEST 2'
 
 on:
   workflow_dispatch:
