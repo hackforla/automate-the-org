@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target_repos:
-        description: 'Provide a comma-separated list of the target project/repos (e.g. "hackforla/project1", "hackforla/project2")'
+        description: 'Provide a comma-separated list of the target repos, e.g. "org/project1", "org/project2")'
         required: true
         type: string
       rollout_branch:
@@ -115,13 +115,13 @@ jobs:
         id: parse-config
         run: |
           # Check if source file exists
-          if [[ ! -f "central/.github/templates/pr_template.md" ]]; then
+          if [[ ! -f "central/.github/templates/pr_template_add_update.md" ]]; then
             echo "Error: Template file not found"
             exit 1
           fi
 
-          # Extract YAML/YML block from .github/templates/pr_template.md into a temp YAML file
-          awk '/^```ya?ml[[:space:]]*$/{flag=1;next}/^```[[:space:]]*$/{flag=0}flag' central/.github/templates/pr_template.md > rollout-config.yaml
+          # Extract YAML/YML block from .github/templates/pr_template_add_update.md into a temp YAML file
+          awk '/^```ya?ml[[:space:]]*$/{flag=1;next}/^```[[:space:]]*$/{flag=0}flag' central/.github/templates/pr_template_add_update.md > rollout-config.yaml
 
           # Verify extraction worked
           if [[ ! -s rollout-config.yaml ]]; then
@@ -143,7 +143,7 @@ jobs:
           fi
           
           # Resolve the relative path from template location to actual file
-          # Template is at: central/.github/templates/pr_template.md
+          # Template is at: central/.github/templates/pr_template_add_update.md
           # WORKFLOW_SRC_RAW is relative to that location (e.g., ../../example-configs/file.yml)
           WORKFLOW_SRC="central/.github/templates/$WORKFLOW_SRC_RAW"
           WORKFLOW_SRC=$(python3 -c "import os; print(os.path.normpath('$WORKFLOW_SRC'))")
@@ -232,7 +232,7 @@ jobs:
               echo "[DRY-RUN] Would push branch: $ROLLOUT_BRANCH"
               
               # read PR template for preview
-              PR_BODY=$(cat central/.github/templates/pr_template.md)
+              PR_BODY=$(cat central/.github/templates/pr_template_add_update.md)
               echo "[DRY-RUN] PR body preview:"
               echo "----------------------------------"
               echo "$PR_BODY"
@@ -312,7 +312,7 @@ jobs:
             git push origin "$ROLLOUT_BRANCH" --force
 
             # ⓼ Create Pull Request
-            PR_BODY=$(cat ../central/.github/templates/pr_template.md)
+            PR_BODY=$(cat ../central/.github/templates/pr_template_add_update.md)
 
             # Build CONFIG_FILES list for template
             CONFIG_FILES_LIST=""
