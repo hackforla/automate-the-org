@@ -1,4 +1,5 @@
 <!--
+Add Update Label Weekly
 Source and destination filepaths
 
 ```yml
@@ -18,17 +19,16 @@ config_files:
 
 ## Automated Workflow Setup
 
-This PR adds the {{WORKFLOW_NAME}} GitHub Actions workflow to your project.
+This PR adds the "Add Update Label Weekly" GitHub Actions workflow to your project.
 
-### What's Being Added
+### Files included
 
-- **Workflow file**: {{WORKFLOW_FILE}}
-- **Configuration files**: {{CONFIG_FILES}}
-
-- **Documentation** (soon)
-  - Complete setup instructions
-  - Troubleshooting guide
-  - Configuration examples
+- **Workflow file**:
+  - `.github/workflows/add-update-label-weekly.yml` 
+- **Configuration files**:
+  - `.github/workflow-configs/add-update-label-weekly-config.yml`
+  - `.github/workflow-configs/label-directory.yml`
+  - `.github/workflow-configs/template/add-update-instructions-template.md`
 
 ### What This Workflow Does
 
@@ -43,7 +43,7 @@ Monitors open, assigned issues with the default status "In progress (actively wo
 - Starts in dry-run mode (safe testing)  
 - No project-specific secrets needed
 
-### Next Steps
+### Configuration Required
 
 1. **Review configuration** in {{WORKFLOW_FILE}}
    - Adjust cron schedule as needed for your project
