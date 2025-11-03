@@ -21,7 +21,7 @@ permissions:
   pull-requests: write
   
 jobs:
-  rollout:
+  Rollout-Workflow:
     runs-on: ubuntu-latest
 
     steps:
