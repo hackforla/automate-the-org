@@ -263,16 +263,28 @@ jobs:
             
             cd temp-repo
 
-            # ⓷ Create rollout branch
-            git checkout -b "$ROLL_OUT_BRANCH"
+            # ⓷ Create rollout branch is does not exist
+            if git ls-remote --heads origin "$ROLL_OUT_BRANCH" | grep -q "$ROLL_OUT_BRANCH"; then
+              echo "Branch $ROLL_OUT_BRANCH already exists remotely"
+              
+              # Checkout existing branch and pull latest
+              git fetch origin "$ROLL_OUT_BRANCH"
+              git checkout "$ROLL_OUT_BRANCH"
+              git pull origin "$ROLL_OUT_BRANCH"
+              
+              echo "Use existing branch and force push changes"
+            else
+              echo "Creating new branch: $ROLL_OUT_BRANCH"
+              git checkout -b "$ROLL_OUT_BRANCH"
+            fi
 
-            # FIX #4: Copy workflow file using workspace-relative path
+            # ⓸ Copy workflow file using workspace-relative path
             # $WORKFLOW_SRC is now relative to $GITHUB_WORKSPACE
             mkdir -p "$(dirname "$WORKFLOW_DEST")"
             cp "$GITHUB_WORKSPACE/$WORKFLOW_SRC" "$WORKFLOW_DEST"
             echo "Copied workflow: $WORKFLOW_SRC -> $WORKFLOW_DEST"
 
-            # FIX #5: Copy project-specific config files using resolved paths
+            # ⓹ Copy project-specific config files using resolved paths
             if [ -s ../config_files.json ]; then
               cat ../config_files.json | jq -c '.[]' | while read -r item; do
                 SRC=$(echo "$item" | jq -r '.src')
@@ -296,8 +308,8 @@ jobs:
             git add .
             git commit -m "Install ${WORKFLOW_NAME} and project-specific files"
 
-            # ⓻ Push rollout branch
-            git push origin "$ROLL_OUT_BRANCH"
+            # ⓻ Force push rollout branch
+            git push origin "$ROLL_OUT_BRANCH" --force
 
             # ⓼ Create Pull Request
             PR_BODY=$(cat ../central/.github/templates/pr_template.md)
