@@ -1,0 +1,291 @@
+name: Rollout Workflow to Project
+
+on:
+  workflow_dispatch:
+    inputs:
+      target_repo:
+        description: 'Provide the name of the target repo, e.g. "org/project"'
+        required: true
+        type: string
+      rollout_branch:
+        description: 'Branch name created for PR for rollout'
+        required: false
+        default: 'automation/rollout-central-workflow'
+      template_file:
+        description: "Template file name (must exist in .github/templates/)"
+        required: true
+        type: string
+      dry_run:
+        description: 'Dry-run mode: preview changes without creating PRs'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+  
+jobs:
+  Rollout-Workflow:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v5
+        with:
+          repository: hackforla/automate-the-org
+          path: central
+
+      - name: Generate GitHub App token for target repo
+        id: generate-app-token
+        uses: actions/github-script@v8
+        env:
+          GH_APP_ID: ${{ secrets.HFLA_WORKFLOW_APP_ID }}
+          GH_APP_PRIVATE_KEY: ${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const { createAppAuth } = require("@octokit/auth-app");
+
+            const appId = process.env.GH_APP_ID;
+            const privateKey = process.env.GH_APP_PRIVATE_KEY;
+            const targetRepo = "${{ github.event.inputs.target_repo }}"; // e.g. "org/project1"
+
+            const [owner, repo] = targetRepo.split('/');
+
+            const auth = createAppAuth({ appId, privateKey });
+
+            // Generate JWT for the App
+            const { token: jwt } = await auth({ type: "app" });
+
+            const octokit = new github.getOctokit(jwt);
+
+            // Fetch installation ID for this repo
+            const { data: installation } = await octokit.rest.apps.getRepoInstallation({
+              owner,
+              repo
+            });
+
+            const installationId = installation.id;
+
+            // Generate installation token
+            const { token } = await auth({ type: "installation", installationId });
+
+            // Output token for this repo
+            core.setOutput("APP_TOKEN", token);
+
+      - name: Verify token generation
+        run: |
+          if [[ -z "${{ steps.generate-app-token.outputs.APP_TOKEN }}" ]]; then
+            echo "Error: GitHub App token generation failed"
+            exit 1
+          fi
+          echo "GitHub App token generation confirmed"
+
+      - name: Prepare variables
+        run: |
+          echo "TARGET_REPO=${{ github.event.inputs.target_repo }}" >> $GITHUB_ENV
+          echo "ROLLOUT_BRANCH=${{ github.event.inputs.rollout_branch }}" >> $GITHUB_ENV
+          echo "DRY_RUN=${{ github.event.inputs.dry_run }}" >> $GITHUB_ENV
+
+      - name: Extract rollout config from PR template
+        id: parse-config
+        run: |
+          # Check if source file exists
+          TEMPLATE="central/.github/templates/${{ github.event.inputs.template_file }}"
+          if [ ! -f "$TEMPLATE" ]; then
+            echo "Error: Template file not found: $TEMPLATE"
+            echo "Available templates:"
+            ls .github/templates/
+            exit 1
+          fi
+          echo "Using template: $TEMPLATE"
+
+          # Extract YAML/YML block from $TEMPLATE into a temp YAML file
+          awk '/^```ya?ml/{flag=1; next} /^```/{flag=0} flag' "$TEMPLATE" > rollout-config.yaml
+
+          # Verify extraction worked
+          if [[ ! -s rollout-config.yaml ]]; then
+            echo "Error: Failed to extract YAML or file is empty"
+            exit 1
+          fi
+
+          echo "Saved rollout-config.yaml:"
+          cat rollout-config.yaml
+
+          # Parse workflow file mapping (these are relative to the template location)
+          WORKFLOW_SRC_RAW=$(yq -r '.workflow_file.src' rollout-config.yaml)
+          WORKFLOW_DEST=$(yq -r '.workflow_file.dest' rollout-config.yaml)
+          
+          # Validate extraction
+          if [[ "$WORKFLOW_SRC_RAW" == "null" ]] || [[ -z "$WORKFLOW_SRC_RAW" ]]; then
+            echo "Error: Failed to extract workflow_file.src from rollout-config.yaml"
+            exit 1
+          fi
+          
+          # Resolve the relative path from template location to actual file
+          # WORKFLOW_SRC_RAW is relative to $TEMPLATE location (e.g., ../../example-configs/file.yml)
+          WORKFLOW_SRC="central/.github/templates/$WORKFLOW_SRC_RAW"
+          WORKFLOW_SRC=$(python3 -c "import os; print(os.path.normpath('$WORKFLOW_SRC'))")
+          
+          echo "WORKFLOW_SRC=$WORKFLOW_SRC" >> $GITHUB_ENV
+          echo "WORKFLOW_DEST=$WORKFLOW_DEST" >> $GITHUB_ENV
+          echo "Resolved workflow source path: $WORKFLOW_SRC"
+
+          # Parse and resolve config_files paths
+          yq -o=json '.config_files' rollout-config.yaml > config_files_raw.json
+          
+          echo "[]" > config_files.json
+          cat config_files_raw.json | jq -c '.[]' | while read -r item; do
+            SRC_RAW=$(echo "$item" | jq -r '.src')
+            DEST=$(echo "$item" | jq -r '.dest')
+            
+            # Resolve relative path from template directory
+            SRC_FULL="central/.github/templates/$SRC_RAW"
+            SRC_RESOLVED=$(python3 -c "import os; print(os.path.normpath('$SRC_FULL'))")
+            
+            # Append to resolved config file
+            jq --arg src "$SRC_RESOLVED" --arg dest "$DEST" '. += [{src: $src, dest: $dest}]' config_files.json > config_files_temp.json
+            mv config_files_temp.json config_files.json
+          done
+          
+          echo "Parsed and resolved config_files.json:"
+          cat config_files.json
+
+      - name: Extract workflow name from workflow source
+        run: |
+          # Verify workflow source file exists
+          if [[ ! -f "$WORKFLOW_SRC" ]]; then
+            echo "Error: Workflow source file not found at $WORKFLOW_SRC"
+            echo "Expected path: $WORKFLOW_SRC"
+            exit 1
+          fi
+          
+          WORKFLOW_NAME=$(grep -E '^name:' "$WORKFLOW_SRC" | sed 's/^name:[[:space:]]*//')
+          
+          if [[ -z "$WORKFLOW_NAME" ]]; then
+            echo "Error: Could not extract workflow name from $WORKFLOW_SRC"
+            exit 1
+          fi
+          
+          echo "WORKFLOW_NAME=$WORKFLOW_NAME" >> $GITHUB_ENV
+          echo "Workflow name: $WORKFLOW_NAME"
+
+      - name: Rollout to target repo
+        env:
+          APP_TOKEN: ${{ steps.generate-app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          REPO="$TARGET_REPO"
+          echo "Processing target repo: $REPO . . ."
+          export GH_TOKEN="$APP_TOKEN"
+
+          # Verify we can access the repo via API
+          if ! gh repo view "$REPO" &>/dev/null; then
+            echo "Error: Cannot access repository $REPO via GitHub API"
+            exit 1
+          fi
+          
+          # ⓵ Get default branch
+          DEFAULT_BRANCH=$(gh api repos/$REPO --jq '.default_branch')
+          echo "Default branch: $DEFAULT_BRANCH"
+
+          # Only in 'DRY_RUN' mode
+          if [ "$DRY_RUN" = "true" ]; then
+            echo "[DRY-RUN] Would clone repo: $REPO (branch: $DEFAULT_BRANCH)"
+            echo "[DRY-RUN] Would create branch: $ROLLOUT_BRANCH"
+            echo "[DRY-RUN] Would copy workflow file: $WORKFLOW_SRC -> $WORKFLOW_DEST"
+            
+            if [ -s config_files.json ]; then
+              cat config_files.json | jq -c '.[]' | while read -r item; do
+                SRC=$(echo "$item" | jq -r '.src')
+                DEST=$(echo "$item" | jq -r '.dest')
+                echo "[DRY-RUN] Would copy config file: $SRC -> $DEST"
+              done
+            else
+              echo "[DRY-RUN] No config files listed."
+            fi
+
+            echo "[DRY-RUN] Would commit changes: Install ${WORKFLOW_NAME} and project-specific files"
+            echo "[DRY-RUN] Would push branch: $ROLLOUT_BRANCH"
+            
+            PR_BODY=$(cat "$TEMPLATE")
+            echo "[DRY-RUN] PR body preview:"
+            echo "----------------------------------"
+            echo "$PR_BODY"
+            echo "----------------------------------"
+            echo "[DRY-RUN] Would create PR titled: Install workflow: ${WORKFLOW_NAME}"
+
+            # Exit safely after previewing actions (no PR created)
+            exit 0
+          fi
+
+          # ⓶ Clone the target repository
+          echo "Cloning repository: $REPO (branch: $DEFAULT_BRANCH)"
+          if ! git clone --depth 1 --branch "$DEFAULT_BRANCH" \
+            "https://x-access-token:${APP_TOKEN}@github.com/${REPO}" temp-repo 2>&1; then
+            echo "Error: Failed to clone repository $REPO"
+            exit 1
+          fi
+          
+          cd temp-repo
+
+          # Configure git
+          git config user.name "Central Rollout Bot"
+          git config user.email "rollout-bot@hackforla.org"
+          git remote set-url origin "https://x-access-token:${APP_TOKEN}@github.com/${REPO}"
+
+          # ⓷ Create rollout branch if not exists
+          if git ls-remote --heads origin "$ROLLOUT_BRANCH" | grep -q "$ROLLOUT_BRANCH"; then
+            echo "Branch $ROLLOUT_BRANCH already exists remotely"
+            git fetch origin "$ROLLOUT_BRANCH"
+            git checkout "$ROLLOUT_BRANCH"
+            git pull origin "$ROLLOUT_BRANCH"
+          else
+            echo "Creating new branch: $ROLLOUT_BRANCH"
+            git checkout -b "$ROLLOUT_BRANCH"
+          fi
+
+          # ⓸ Copy workflow
+          mkdir -p "$(dirname "$WORKFLOW_DEST")"
+          cp "$GITHUB_WORKSPACE/$WORKFLOW_SRC" "$WORKFLOW_DEST"
+          echo "Copied workflow: $WORKFLOW_SRC -> $WORKFLOW_DEST"
+
+          # ⓹ Copy config files
+          if [ -s ../config_files.json ]; then
+            cat ../config_files.json | jq -c '.[]' | while read -r item; do
+              SRC=$(echo "$item" | jq -r '.src')
+              DST=$(echo "$item" | jq -r '.dest')
+              
+              if [[ ! -f "$GITHUB_WORKSPACE/$SRC" ]]; then
+                echo "Warning: Config file not found: $SRC"
+                continue
+              fi
+              
+              mkdir -p "$(dirname "$DST")"
+              cp "$GITHUB_WORKSPACE/$SRC" "$DST"
+              echo "Copied config: $SRC -> $DST"
+            done
+          fi
+
+          # ⓺ Commit if changes
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit - workflow already up to date"
+            exit 0
+          fi
+          git commit -m "Install ${WORKFLOW_NAME} and project-specific files"
+
+          # ⓻ Push rollout branch
+          git push origin "$ROLLOUT_BRANCH" --force
+
+          # ⓼ Create Pull Request
+          PR_BODY=$(cat "../$TEMPLATE")
+          gh pr create \
+            --repo $REPO \
+            --head "$ROLLOUT_BRANCH" \
+            --base "$DEFAULT_BRANCH" \
+            --title "Install workflow: ${WORKFLOW_NAME}" \
+            --body "$PR_BODY"
+
+          cd ..
+          rm -rf temp-repo
