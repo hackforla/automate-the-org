@@ -132,11 +132,11 @@ jobs:
           echo "DRY_RUN=${{ github.event.inputs.dry_run }}" >> $GITHUB_ENV
 
           # Extract project name from target repo
-          PROJECT_NAME=$(echo "${TARGET_REPO}" | cut -d'/' -f2)
+          PROJECT_NAME="${TARGET_REPO##*/}"
           echo "PROJECT_NAME=${PROJECT_NAME}" >> $GITHUB_ENV
 
           # Extract org name from source repo
-          ORG_NAME=$(echo "$SOURCE_REPO" | cut -d'/' -f1)
+          ORG_NAME="${SOURCE_REPO%%/*}"
           echo "ORG_NAME=${ORG_NAME}" >> $GITHUB_ENV
 
       - name: Check whether label-directory.json exists in target repo
