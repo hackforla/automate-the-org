@@ -131,7 +131,7 @@ jobs:
           set -e
 
           echo "The following file not found in target repo:"
-          echo "`github-actions/workflow-configs/_data/label-directory.yml`"
+          echo "  ⮡  github-actions/workflow-configs/_data/label-directory.yml"
           echo "The next step will create this file."
 
           RUN_ID=$(gh workflow run rollout-workflow-to-projects.yml \
