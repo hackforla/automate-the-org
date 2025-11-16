@@ -230,19 +230,16 @@ jobs:
           EOF
 
           echo "label-directory.json created at example-configs/label-directory.{PROJECT_NAME}.json"
-
+          echo "FILEPATH=central/example-configs/$FILENAME" >> $GITHUB_ENV
+          
       - name: Commit file back to source repo
         run: |
-          cd central
-          
+          cd central 
           git config user.name "${{ github.event.inputs.github_app_name }}[bot]"
           git config user.email "${{ github.event.inputs.github_app_name }}@${ORG_NAME}.org"
-
-          # Reconstruct the filepath from existing env vars
-          FILEPATH="central/example-configs/$FILENAME"
-          
+        
           echo "Committing: $FILEPATH"
-
+  
           git add "$FILEPATH"
           echo "Committing: $FILEPATH"
 
