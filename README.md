@@ -32,7 +32,7 @@ workflow-configs/
 ├── example-configs/                    # Example configuration files
 │   ├── add-update-label-weekly-config.example.yml
 │   ├── add-update-label-weekly.example.yml
-│   └── label-directory.example.yml     # DO NOT USE
+│   └── label-directory.example.yml     # Example only- not used
 │
 ├── package.json                        # Dependencies for all actions
 ├── 
@@ -66,8 +66,8 @@ Choose your desired workflow, then follow the steps to implement it in your repo
   - describe blockers and request help if needed,
   - indicate their availability for working on the issue, and
   - share an estimated time to complete the issue.
-- Applies the label "statusInactive1" : `To Update!`<sup>4</sup> if this is the first notice.
-- Applies the label "statusInactive2": `2 weeks inactive`<sup>4</sup> if this is the second notice. 
+- Applies the label "statusInactive1" : `status: To Update!`<sup>4</sup> if this is the first notice.
+- Applies the label "statusInactive2": `status: 2 weeks inactive`<sup>4</sup> if this is the second notice. 
 - Additional features:
   - Minimizes previous, repetitive bot comments within a specified timeframe<sup>2</sup>.
   - Applies the label (default) "statusUpdated": `Status: Updated`<sup>4</sup> if an update was posted recently.
@@ -85,7 +85,8 @@ These are configurable, see [Step 2: Customize Config →](#step-2-customize-con
 
 #### tbc
 
-### How to Manually Install
+### How to Manually Install- 
+Don't do this unless you have a great reason!
 
 #### Step 0: Copy and rename the three workflow files that you need for your workflow. (coming soon)
 
@@ -135,7 +136,7 @@ labels:
   ...
 ```
 
-If you do not include the values in `.github/workflow-configs/label-directory.yml`, the default values shown in `.github/workflow-configs/add-update-label-weekly-config.yml` will apply. For this workflow, the default values are: 
+If you do not include the values in `.github/workflow-configs/_data/label-directory.yml`, the default values shown in `.github/workflow-configs/add-update-label-weekly-config.yml` will apply. For this workflow, the default values are: 
 
 ```yml
   # Required by the workflow:
@@ -163,23 +164,22 @@ See [example-configs/label-directory.example.yml](./example-configs/label-direct
 
 #### Step 5: About Tokens and Secrets
 
-These workflows use centrally maintained GitHub Apps to authorize and authenticate workflows,
-including `hfla-graphql-app` and `hfla-workflow-rollout`. The central organization settings
-allow for configuring apps on a project-by-project basis. This must be configured before
-each project can run the workflow locally in their own repo.
+These workflows use centrally maintained GitHub Apps to authorize and authenticate workflows, including  
+`hfla-graphql-app` and `hfla-workflow-rollout`. The GitHub Apps can be configured to allow repository  
+access on a project-by-project basis. Access must be granted before running the workflow locally; however,  
+since the App is maintained centrally projects do not need to create tokens or secrets. 
 
 
 ### Action Inputs
 
-| Input | Description | Required | Default |
-|-------|-------------|----------|---------|
-| `github-token` | Token with 'repo (full)' and 'project (full)' scopes | Yes | - |
-| `config-path` | Path to config YAML in your repo | No | `.github/workflow-configs/`<br>`add-update-label-weekly-config.yml` |
-| `updated-by-days` | Override: days for "current" threshold | No | From config |
-| `comment-by-days` | Override: days for first notice | No | From config |
-| `inactive-by-days` | Override: days for second notice | No | From config |
-| `target-status` | Override: Project Board status | No | From config |
-| `label-status-*` | Override: label names | No | From config |
+| Input | Description |  Default |
+|-------|-------------|----------|
+| `config-path` | Path to config YAML in your repo | `.github/workflow-configs/`<br>`add-update-label-weekly-config.yml` |
+| `recently-updated-by-days` | Override: days for "current" threshold | From config |
+| `needs-updating-by-days` | Override: days for first notice | From config |
+| `is-inactive-by-days` | Override: days for second notice | From config |
+| `target-status` | Override: Project Board status | From config |
+| `label-status-*` | Override: label names | From config |
 
 
 ---
@@ -214,27 +214,53 @@ Test actions in a separate test repository before releasing next version.
 
 ### Versioning
 
-Edit the [CHANGELOG.md]() with the latest changes, then confirm the most recent version:
+Make all necessary changes and commit as usual:
+
+```bash
+git add .
+git commit -m "what is being committed"
+git push
+```
+_Note: as always, use `git add .` or `git add <individual file>` as appropriate_
+
+Rebuild the `@vercel/ncc` files, then re-commit: 
+
+```bash
+npm install
+npm run build
+git add .
+git commit -m "new release build"
+git push
+```
+
+Update the [CHANGELOG.md](https://github.com/hackforla/automate-the-org/blob/master/CHANGELOG.md) with the latest changes (using prefixes such as "fix: " or "feat: " -see `CHANGELOG.md`) as needed, then double-check the most recent version:
 
 ```bash
 git tag
 ```
+This should match the most recent version listed in the `CHANGELOG.md`, which should also match the latest version listed in [package.json](https://github.com/hackforla/automate-the-org/blob/master/package.json). If it doesn't, then you may need to manually correct the versions.
 
-Increment to the next patch, minor, or major versioning:
+Now run the automatic versioning utility. This will check whether you have set an `upstream`, and ask whether the next version should be a patch, minor, or major version change per [semver](https://semver.org/) (e.g. version MAJOR.MINOR.PATCH):
+
 
 ```bash
-git tag -a v1.0.0 -m "Release v1.0.0"
-git push origin v1.0.0
-
-# Update major version tag
-git tag -fa v1 -m "Update v1 to v1.0.0"
-git push origin v1 --force
+./auto-release.sh
 ```
 
-Projects can reference:
-- `@v1` - Gets latest v1.x.x (auto-updates)
-- `@v1.0.0` - Pins to specific version
-- `@main` - Uses latest commit (not recommended)
+#### Versioning adjustments
+Use the following for adjustments to the version tags (but only if you understand what you are doing!) 
+
+- To remove previously-committed versions:
+  ```bash
+  git tag -d <version>
+  git push origin --delete <version>
+  ```
+  _Remember to adjust `CHANGELOG.md` and `package.json` also._
+- If you did not set your upstream branch but pushed the version anyway, you will need to set your `upstream` to `master` branch, then:
+  ```bash
+  git push upstream <version>
+  ```
+
 
 ---
 
@@ -285,6 +311,10 @@ function loadYourActionConfig({ projectRepoPath, configPath, overrides }) {
 }
 ```
 
+### resolve-labels.js
+
+- Loads and merges `label-directory.yml` file with overrides.
+
 ### find-linked-issue.js
 
 Parses PR body to find linked issues (fixes #123, resolves #456, etc.).
@@ -293,21 +323,18 @@ Parses PR body to find linked issues (fixes #123, resolves #456, etc.).
 
 Wraps log messages with tags via `logger.` including `[STEP]`, `[INFO]`, `[SUCCESS]`, `[WARN]`, `[ERROR]`, `[DEBUG]`.
 
-### get-issue-timeline.js
-
-Fetches issue timeline events from GitHub API.
 
 ### hide-issue-comment.js
 
 Minimizes comments using GraphQL mutation.
 
-### resolve-configs.js
+### manage-issue-labels.js
 
-Loads and merges YAML config files with overrides.
+Collection of utility functions for issue labeling, including `addLabels()` and `deleteLabels()`.
 
-### resolve-labels.js
+### manage-issue-timeline.js
 
-Loads and merges label directory files with overrides.
+Collection of utility functions for issue timelines, including `setLocalTime()` and `getIssueTimeline()`.
 
 ---
 

@@ -39,8 +39,10 @@ jobs:
       - name: Generate token from GitHub App
         id: generate-app-token
         run: |
-          
-          # Generate JWT
+          # Generate JWT for GitHub App authentication
+          echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > key.pem
+          chmod 600 key.pem
+
           NOW=$(date +%s)
           IAT=$((NOW - 60))
           EXP=$((NOW + 600))
@@ -48,28 +50,37 @@ jobs:
           HEADER='{"alg":"RS256","typ":"JWT"}'
           PAYLOAD="{\"iat\":${IAT},\"exp\":${EXP},\"iss\":\"${{ secrets.HFLA_WORKFLOW_APP_ID }}\"}"
           
-          # Create JWT using OpenSSL
-          HEADER_B64=$(echo -n "$HEADER" | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
-          PAYLOAD_B64=$(echo -n "$PAYLOAD" | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
-          SIGNATURE=$(echo -n "${HEADER_B64}.${PAYLOAD_B64}" | \
-            openssl dgst -sha256 -sign <(echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}") | \
-            openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
-          JWT="${HEADER_B64}.${PAYLOAD_B64}.${SIGNATURE}"
+          encode_url() {
+            openssl base64 -e | tr '+/' '-_' | tr -d '='
+          }
           
-          # Get installation ID
-          ORG_NAME=$(echo "${{ github.event.inputs.source_repo }}" | cut -d'/' -f1)      
-          INSTALLATION_ID=$(curl -s -H "Authorization: Bearer ${JWT}" \
+          HEADER_B64=$(echo -n "$HEADER" | encode_url)
+          PAYLOAD_B64=$(echo -n "$PAYLOAD" | encode_url)
+          SIGNATURE=$(
+            echo -n "${HEADER_B64}.${PAYLOAD_B64}" \
+              | openssl dgst -sha256 -sign key.pem \
+              | encode_url
+          )
+          
+          JWT="${HEADER_B64}.${PAYLOAD_B64}.${SIGNATURE}"
+          echo "::add-mask::$JWT"
+          
+          # Retrieve installation ID
+          INSTALLATION_ID=$(curl -s \
+            -H "Authorization: Bearer ${JWT}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/orgs/${ORG_NAME}/installation" | jq -r '.id')
-          if [[ "$INSTALLATION_ID" == "null" ]] || [[ -z "$INSTALLATION_ID" ]]; then
+            "https://api.github.com/orgs/hackforla/installation" \
+            | jq -r '.id')
+          
+          if [[ -z "$INSTALLATION_ID" || "$INSTALLATION_ID" == "null" ]]; then
             echo "Error: Could not get installation ID"
             echo "Make sure the GitHub App is installed on the organization"
             exit 1
           fi
           
           echo "Installation ID: $INSTALLATION_ID"
-          
-          # Get installation access token
+
+          # Exchange JWT for installation access token
           TOKEN_RESPONSE=$(curl -s -X POST \
             -H "Authorization: Bearer ${JWT}" \
             -H "Accept: application/vnd.github+json" \
@@ -77,7 +88,7 @@ jobs:
           
           APP_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token')
           
-          if [[ "$APP_TOKEN" == "null" ]] || [[ -z "$APP_TOKEN" ]]; then
+          if [[ -z "$APP_TOKEN" || "$APP_TOKEN" == "null" ]]; then
             echo "Error: Could not generate access token"
             echo "Response: $TOKEN_RESPONSE"
             exit 1
@@ -85,10 +96,76 @@ jobs:
           
           # Mask token in logs
           echo "::add-mask::$APP_TOKEN"
-          
-          # Output token
           echo "token=$APP_TOKEN" >> $GITHUB_OUTPUT
-          echo "Token generated successfully"
+
+          # Output token
+          rm key.pem
+          echo "GitHub App installation token generated successfully"
+
+      - name: Check whether label-directory.yml exists in source repo
+        id: check-label-directory
+        run: |
+          SOURCE_REPO="${{ github.event.inputs.source_repo }}"
+
+          if gh api repos/$SOURCE_REPO/contents/github-actions/workflow-configs/_data/label-directory.yml \
+            -H "Authorization: token ${{ steps.generate-app-token.outputs.token }}" \
+            --jq '.name' > /dev/null 2>&1; then
+            echo "FILE_EXISTS=true" >> $GITHUB_ENV
+          else
+            echo "FILE_EXISTS=false" >> $GITHUB_ENV
+          fi
+
+      - name: Trigger Rollout Project Label Directory workflow if needed
+        id: trigger-rollout
+        if: env.FILE_EXISTS == 'false'
+        run: |
+          set -e
+
+          echo "The following file not found in target repo:"
+          echo "`github-actions/workflow-configs/_data/label-directory.yml`"
+          echo "The next step will create this file."
+
+          RUN_ID=$(gh workflow run rollout-workflow-to-projects.yml \
+            -f source_repo="${{ github.event.inputs.source_repo }}" \
+            -f target_repo="${{ github.event.inputs.target_repo }}" \
+            --repo "${{ github.repository }}" \
+            --json run_id --jq '.run_id')
+
+          echo "Triggered rollout workflow: $RUN_ID"
+          echo "ROLL_OUT_RUN_ID=$RUN_ID" >> $GITHUB_ENV
+
+      - name: Wait for rollout workflow to finish
+        if: env.FILE_EXISTS == 'false'
+        run: |
+          set -e
+          RUN_ID="${{ env.ROLL_OUT_RUN_ID }}"
+          echo "Waiting for workflow run: $RUN_ID"
+
+          while true; do
+            STATUS=$(gh run view "$RUN_ID" --json status --jq ".status")
+
+            if [[ "$STATUS" == "completed" ]]; then
+              RESULT=$(gh run view "$RUN_ID" --json conclusion --jq ".conclusion")
+              echo "Workflow finished with result: $RESULT"
+
+              if [[ "$RESULT" != "success" ]]; then
+                echo "Rollout workflow failed. Exiting."
+                exit 1
+              fi
+
+              break
+            fi
+
+            echo "Still running... status=$STATUS"
+            sleep 10
+          done
+
+      - name: Download generated label-directory.json if created
+        if: env.FILE_EXISTS == 'false'
+        uses: actions/download-artifact@v5
+        with:
+          name: label-directory
+          path: temp-label-data
 
       - name: Prepare variables
         run: |

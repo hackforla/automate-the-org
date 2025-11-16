@@ -1,16 +1,13 @@
 name: Rollout Project Label Directory
 
 on:
+  workflow_call:
   workflow_dispatch:
     inputs:
       target_repo:
         description: 'Provide the name of the target repo, e.g. "org/project"'
         required: true
         type: string
-      rollout_branch:
-        description: 'Branch name created for PR for label directory rollout'
-        required: false
-        default: 'automation/rollout-label-directory'
       dry_run:
         description: 'Dry-run mode: preview changes without creating PRs'
         type: boolean
@@ -34,9 +31,10 @@ jobs:
       - name: Generate token from GitHub App
         id: generate-app-token
         run: |
-          # ------------> FUTURE: Generalize GitHub Apps
-          
-          # Generate JWT
+          # Generate JWT for GitHub App authentication
+          echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > key.pem
+          chmod 600 key.pem
+
           NOW=$(date +%s)
           IAT=$((NOW - 60))
           EXP=$((NOW + 600))
@@ -44,28 +42,37 @@ jobs:
           HEADER='{"alg":"RS256","typ":"JWT"}'
           PAYLOAD="{\"iat\":${IAT},\"exp\":${EXP},\"iss\":\"${{ secrets.HFLA_WORKFLOW_APP_ID }}\"}"
           
-          # Create JWT using OpenSSL
-          HEADER_B64=$(echo -n "$HEADER" | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
-          PAYLOAD_B64=$(echo -n "$PAYLOAD" | openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
-          SIGNATURE=$(echo -n "${HEADER_B64}.${PAYLOAD_B64}" | \
-            openssl dgst -sha256 -sign <(echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}") | \
-            openssl base64 -e -A | tr '+/' '-_' | tr -d '=')
+          encode_url() {
+            openssl base64 -e | tr '+/' '-_' | tr -d '='
+          }
+          
+          HEADER_B64=$(echo -n "$HEADER" | encode_url)
+          PAYLOAD_B64=$(echo -n "$PAYLOAD" | encode_url)
+          SIGNATURE=$(
+            echo -n "${HEADER_B64}.${PAYLOAD_B64}" \
+              | openssl dgst -sha256 -sign key.pem \
+              | encode_url
+          )
+          
           JWT="${HEADER_B64}.${PAYLOAD_B64}.${SIGNATURE}"
+          echo "::add-mask::$JWT"
           
-          # Get installation ID
-          INSTALLATION_ID=$(curl -s -H "Authorization: Bearer ${JWT}" \
+          # Retrieve installation ID
+          INSTALLATION_ID=$(curl -s \
+            -H "Authorization: Bearer ${JWT}" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/orgs/hackforla/installation" | jq -r '.id')
+            "https://api.github.com/orgs/hackforla/installation" \
+            | jq -r '.id')
           
-          if [[ "$INSTALLATION_ID" == "null" ]] || [[ -z "$INSTALLATION_ID" ]]; then
+          if [[ -z "$INSTALLATION_ID" || "$INSTALLATION_ID" == "null" ]]; then
             echo "Error: Could not get installation ID"
             echo "Make sure the GitHub App is installed on the organization"
             exit 1
           fi
           
           echo "Installation ID: $INSTALLATION_ID"
-          
-          # Get installation access token
+
+          # Exchange JWT for installation access token
           TOKEN_RESPONSE=$(curl -s -X POST \
             -H "Authorization: Bearer ${JWT}" \
             -H "Accept: application/vnd.github+json" \
@@ -73,7 +80,7 @@ jobs:
           
           APP_TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.token')
           
-          if [[ "$APP_TOKEN" == "null" ]] || [[ -z "$APP_TOKEN" ]]; then
+          if [[ -z "$APP_TOKEN" || "$APP_TOKEN" == "null" ]]; then
             echo "Error: Could not generate access token"
             echo "Response: $TOKEN_RESPONSE"
             exit 1
@@ -81,17 +88,12 @@ jobs:
           
           # Mask token in logs
           echo "::add-mask::$APP_TOKEN"
-          
-          # Output token
           echo "token=$APP_TOKEN" >> $GITHUB_OUTPUT
-          echo "Token generated successfully"
-      - name: Verify token generation
-        run: |
-          if [[ -z "${{ steps.generate-app-token.outputs.token }}" ]]; then
-            echo "Error: GitHub App token generation failed"
-            exit 1
-          fi
-          echo "GitHub App token generation confirmed"
+
+          # Output token
+          rm key.pem
+          echo "GitHub App installation token generated successfully"
+
       - name: Checkout target repo
         uses: actions/checkout@v5
         with:
@@ -102,34 +104,54 @@ jobs:
       - name: Export workflow inputs to environment
         run: |
           echo "TARGET_REPO=${{ github.event.inputs.target_repo }}" >> $GITHUB_ENV
-          echo "ROLLOUT_BRANCH=${{ github.event.inputs.rollout_branch }}" >> $GITHUB_ENV
           echo "DRY_RUN=${{ github.event.inputs.dry_run }}" >> $GITHUB_ENV
+
+      - name: Check whether label-directory.yml exists in target repo
+        id: check-label-dir
+        run: |
+          if [ -f "target/github-actions/workflow-configs/_data/label-directory.yml" ]; then
+            echo "LABEL_DIR_EXISTS=true" >> $GITHUB_ENV
+            echo "Label directory file exists in target repo. Do not proceed."
+            exit 1
+          else
+            echo "LABEL_DIR_EXISTS=false" >> $GITHUB_ENV
+            echo "Label directory file does not exist in target repo."
+          fi
       - name: Retrieve all labels from target repo
         id: retrieve-labels
         env:
           GITHUB_TOKEN: ${{ steps.generate-app-token.outputs.token }}
         run: |
           echo "Retrieving labels for $TARGET_REPO"
-          # paginate all labels into one JSON array
-          gh api --paginate "repos/$TARGET_REPO/labels?per_page=100" -H "Accept: application/vnd.github+json" > all_labels.json
-          # produce compact list of {id,name}
+
+          # Fetch all labels into one JSON array
+          gh api --paginate "repos/$TARGET_REPO/labels?per_page=100" \
+            -H "Accept: application/vnd.github+json" > all_labels.json
+
+          # Create initial list {id,name}
           jq '[.[] | {id: .id, name: .name}]' all_labels.json > labels_simple.json
+
           echo "Retrieved labels:"
           cat labels_simple.json
+
           echo "LABELS_JSON=$(cat labels_simple.json | jq -c .)" >> $GITHUB_ENV
+
       - name: Generate label-directory.json
         id: generate-json
         env:
           LABELS_JSON: ${{ env.LABELS_JSON }}
         run: |
-          echo "Generating label-directory.json..."
-          cd target
-          mkdir -p github-actions/workflow-configs/_data
+          echo "Generating `label-directory.json` in source repo..."
+
+          mkdir -p temp-label-data
+
           node <<'EOF'
           const fs = require('fs');
           const path = require('path');
+
           const raw = process.env.LABELS_JSON || "[]";
           const labels = JSON.parse(raw);
+
           const toCamelCase = (str) => {
             return String(str || '')
               .split(/[^a-zA-Z0-9]+/)
@@ -140,7 +162,7 @@ jobs:
           const labelDirectory = {};
           for (const label of labels) {
             const labelKey = toCamelCase(label.name);
-            // ensure unique keys if collision: append id if duplicate
+            // If collision, make unique by appending ID
             if (labelDirectory[labelKey]) {
               const uniqueKey = `${labelKey}_${label.id}`;
               labelDirectory[uniqueKey] = [label.name, Number(label.id)];
@@ -148,61 +170,21 @@ jobs:
               labelDirectory[labelKey] = [label.name, Number(label.id)];
             }
           }
-          const filepath = path.join('github-actions', 'utilities', '_data', 'label-directory.json');
-          fs.mkdirSync(path.dirname(filepath), { recursive: true });
+
+          const filepath = path.join('temp-label-data', 'label-directory.json');
           fs.writeFileSync(filepath, JSON.stringify(labelDirectory, null, 2), 'utf8');
+
           console.log('Generated label-directory.json:');
           console.log(JSON.stringify(labelDirectory, null, 2));
-          // print filepath to stdout so the step can pick it if needed
           console.log('FILEPATH=' + filepath);
           EOF
+
           # persist FILEPATH for downstream steps
-          echo "FILEPATH=github-actions/workflow-configs/_data/label-directory.json" >> $GITHUB_ENV
-      - name: Commit and push rollout branch
-        env:
-          GITHUB_TOKEN: ${{ steps.generate-app-token.outputs.token }}
-        run: |
-          cd target
-          ROLLOUT_BRANCH="${ROLLOUT_BRANCH}"
-          DRY_RUN="${DRY_RUN}"
-          FILE="$FILEPATH"
-          echo "Preparing to commit $FILE to branch '$ROLLOUT_BRANCH'..."
-          if [[ "$DRY_RUN" == "true" || "$DRY_RUN" == "True" ]]; then
-            echo "[DRY-RUN] Would create branch and commit $FILE"
-            exit 0
-          fi
-          # determine default branch
-          DEFAULT_BRANCH=$(gh api "repos/${TARGET_REPO}" -H "Accept: application/vnd.github+json" -q .default_branch)
-          # create branch from default, or checkout existing
-          git fetch origin "$DEFAULT_BRANCH"
-          if git rev-parse --verify "refs/heads/$ROLLOUT_BRANCH" >/dev/null 2>&1; then
-            git checkout "$ROLLOUT_BRANCH"
-          else
-            git checkout -b "$ROLLOUT_BRANCH" "origin/$DEFAULT_BRANCH"
-          fi
-          git add "$FILE"
-          git commit -m "Add/Update label-directory.json via automation" || echo "No changes to commit"
-          git push origin "$ROLLOUT_BRANCH" --force
-          echo "Committed and pushed to branch $ROLLOUT_BRANCH"
-      - name: Create Pull Request for label-directory rollout
-        env:
-          GITHUB_TOKEN: ${{ steps.generate-app-token.outputs.token }}
-        run: |
-          ROLLOUT_BRANCH="${ROLLOUT_BRANCH}"
-          DRY_RUN="${DRY_RUN}"
-          if [[ "$DRY_RUN" == "true" || "$DRY_RUN" == "True" ]]; then
-            echo "[DRY-RUN] Would create PR from '$ROLLOUT_BRANCH'"
-            exit 0
-          fi
-          DEFAULT_BRANCH=$(gh api "repos/${TARGET_REPO}" -H "Accept: application/vnd.github+json" -q .default_branch)
-          echo "Creating PR from '$ROLLOUT_BRANCH' into '$DEFAULT_BRANCH'..."
-          # create PR and return URL
-          PR_URL=$(gh pr create \
-            --repo "${TARGET_REPO}" \
-            --head "$ROLLOUT_BRANCH" \
-            --base "$DEFAULT_BRANCH" \
-            --title "Rollout label-directory.json" \
-            --body "Automated rollout of label-directory.json for review." \
-            --json url -q .url)
-          echo "Created Pull Request: $PR_URL"
-          echo "PR_URL=$PR_URL" >> $GITHUB_ENV
+          echo "FILEPATH=temp-label-data/label-directory.json" >> $GITHUB_ENV
+          echo "label-directory.json created at temp-label-data/label-directory.json"
+
+      - name: Upload label-directory.json artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: label-directory
+          path: temp-label-data/label-directory.json

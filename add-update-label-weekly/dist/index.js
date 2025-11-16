@@ -8992,6 +8992,22 @@ function charFromCodepoint(c) {
   );
 }
 
+// set a property of a literal object, while protecting against prototype pollution,
+// see https://github.com/nodeca/js-yaml/issues/164 for more details
+function setProperty(object, key, value) {
+  // used for this specific key only because Object.defineProperty is slow
+  if (key === '__proto__') {
+    Object.defineProperty(object, key, {
+      configurable: true,
+      enumerable: true,
+      writable: true,
+      value: value
+    });
+  } else {
+    object[key] = value;
+  }
+}
+
 var simpleEscapeCheck = new Array(256); // integer, for fast access
 var simpleEscapeMap = new Array(256);
 for (var i = 0; i < 256; i++) {
@@ -9170,7 +9186,7 @@ function mergeMappings(state, destination, source, overridableKeys) {
     key = sourceKeys[index];
 
     if (!_hasOwnProperty.call(destination, key)) {
-      destination[key] = source[key];
+      setProperty(destination, key, source[key]);
       overridableKeys[key] = true;
     }
   }
@@ -9230,17 +9246,7 @@ function storeMappingPair(state, _result, overridableKeys, keyTag, keyNode, valu
       throwError(state, 'duplicated mapping key');
     }
 
-    // used for this specific key only because Object.defineProperty is slow
-    if (keyNode === '__proto__') {
-      Object.defineProperty(_result, keyNode, {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value: valueNode
-      });
-    } else {
-      _result[keyNode] = valueNode;
-    }
+    setProperty(_result, keyNode, valueNode);
     delete overridableKeys[keyNode];
   }
 
@@ -34534,7 +34540,7 @@ const { logger } = __nccwpck_require__(2515);
  */
 async function addLabels(github, context, config, issueNum, ...labelsToAdd) {
   if (config.dryRun) {
-    logger.debug(`Would add '${labelsToAdd}' to issue #${issueNum}`);
+    logger.debug(` Would add '${labelsToAdd}' to issue #${issueNum}`);
     return;
   }
   try {
@@ -34545,7 +34551,7 @@ async function addLabels(github, context, config, issueNum, ...labelsToAdd) {
       issue_number: issueNum,
       labels: labelsToAdd,
     });
-    logger.info(`'${labelsToAdd}' label has been added to issue #${issueNum}`);
+    logger.info(` '${labelsToAdd}' label has been added`);
     // If an error is found, the rest of the script does not stop.
   } catch (err) {
     logger.error(`Function failed to add labels. Please refer to the error below: \n `, err);
@@ -34562,7 +34568,7 @@ async function addLabels(github, context, config, issueNum, ...labelsToAdd) {
 async function removeLabels(github, context, config, issueNum, ...labelsToRemove) {
   for (let label of labelsToRemove) {
     if (config.dryRun) {
-      logger.debug(`Would remove '${label}' from issue #${issueNum}`);
+      logger.debug(` Would remove '${label}' from issue #${issueNum}`);
       continue;
     }
     try {
@@ -34573,10 +34579,12 @@ async function removeLabels(github, context, config, issueNum, ...labelsToRemove
         issue_number: issueNum,
         name: label,
       });
-      logger.info(`'${label}' label has been removed from issue #${issueNum}`);
+      logger.info(` '${label}' label has been removed`);
     } catch (err) {
-      if (err.status !== 404) {
-        logger.error(`Function failed to remove label. Please refer to the error below: \n `, err);
+      if (err.status === 404) {
+        logger.log(` '${label}' label not found, no need to remove`);
+      } else {
+        logger.error(`Function failed to remove labels. Please refer to the error below: \n `, err);
       }
     }
   }
@@ -34880,7 +34888,7 @@ async function resolveLabels({
 
   for (let labelKey of allLabelKeys) {
     if (labelDirectory[labelKey]) {
-      resolvedLabels[labelKey] = labelDirectory[labelKey];
+      resolvedLabels[labelKey] = labelDirectory[labelKey][0];
       logger.debug(`Mapped ${labelKey}: "${labelDirectory[labelKey]}"`);
     } else if (optionalLabelKeys.includes(labelKey)) {
       logger.warn(`Optional ${labelKey} not found - skipping`);

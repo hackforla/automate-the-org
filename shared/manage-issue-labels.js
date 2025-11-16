@@ -54,6 +54,7 @@ async function removeLabels(github, context, config, issueNum, ...labelsToRemove
         logger.log(` '${label}' label not found, no need to remove`);
       } else {
         logger.error(`Function failed to remove labels. Please refer to the error below: \n `, err);
+      }
     }
   }
 }

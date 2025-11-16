@@ -16,52 +16,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 _No unreleased changes yet._
 
+## v0.4.3
+2025-11-15
+- feat: Added script to update upstream (master) branch
+- refactor: `rollout-project-label-directory.yml`
+- feat: added `rollout-workflow-to-projects-REV3.yml`
+- feat: minor refactoring of other files
+- fix: applied update to js-yaml to address CVE-2025-64718
+
+
+## v0.4.2
+2025-11-09
+- fix: minor bug fix 
+
 ## v0.4.0
 2025-11-08
-
 - Minor release
 - feat: Changed final directory structure
+- feat: changed variable names 
 - feat: Add `rollout-project-label-directory.yml`
 
 ## v0.3.6
 2025-11-05
-
 - time bugs
 
 ## v0.3.5
 2025-11-05
-
 - bug: still are problems
 
 ## v0.3.4
 2025-11-05
-
 - bug: fix logic in add-update-label-weekly
 
 ## v0.3.3
 2025-11-05
-
 - bug: queryIssueInfo
 
 ## v0.3.2
 2025-11-05
-
 - bug: Fix for all website test
 
 ## v0.3.1
 2025-11-05
-
 - bug: remove old reference
 
 ## v0.3.0
 2025-11-05
-
 - Testing mode against Website
 - Comments specify time of last activity, label key
 
 ## v0.2.0
 2025-11-01
-
 - Substantial changes token changes
 - feat: introduced org-level, fine-grained token
 - feat: introduced org-level, just-in-time token via GitHub App
