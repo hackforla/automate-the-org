@@ -190,7 +190,7 @@ jobs:
         env:
           LABELS_JSON: ${{ env.LABELS_JSON }}
         run: |
-          echo "Generating `label-directory. < project_name > .json` in source repo..."
+          echo "Generating label-directory.{PROJECT_NAME}.json in source repo..."
 
           mkdir -p example-configs
 
