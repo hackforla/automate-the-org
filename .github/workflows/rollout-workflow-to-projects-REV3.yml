@@ -134,11 +134,13 @@ jobs:
           echo "  ⮡  github-actions/workflow-configs/_data/label-directory.yml"
           echo "The next step will create this file."
 
-          RUN_ID=$(gh workflow run rollout-workflow-to-projects.yml \
+          RUN_OUTPUT=$(gh workflow run rollout-workflow-to-projects.yml \
             -f source_repo="${{ github.event.inputs.source_repo }}" \
             -f target_repo="${{ github.event.inputs.target_repo }}" \
-            --repo "${{ github.repository }}" \
-            --json run_id --jq '.run_id')
+            --repo "${{ github.repository }}")
+          
+          # Extract run_id from the GitHub Actions run URL
+          RUN_ID=$(echo "$RUN_OUTPUT" | grep -oE "runs/[0-9]+" | sed 's/runs\///')
 
           echo "Triggered rollout workflow: $RUN_ID"
           echo "ROLL_OUT_RUN_ID=$RUN_ID" >> $GITHUB_ENV
