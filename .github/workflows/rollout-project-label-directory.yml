@@ -229,9 +229,7 @@ jobs:
           console.log('FILEPATH=' + filepath);
           EOF
 
-          # persist FILEPATH for downstream steps
-          echo "FILEPATH=$filepath" >> $GITHUB_ENV
-          echo "label-directory.json created at example-configs/label-directory.<PROJECT_NAME>.json"
+          echo "label-directory.json created at example-configs/label-directory.{PROJECT_NAME}.json"
 
       - name: Commit file back to source repo
         run: |
@@ -240,6 +238,12 @@ jobs:
           git config user.name "${{ github.event.inputs.github_app_name }}[bot]"
           git config user.email "${{ github.event.inputs.github_app_name }}@${ORG_NAME}.org"
 
+          # Reconstruct the filepath from existing env vars
+          FILEPATH="central/example-configs/$FILENAME"
+          
+          echo "Committing: $FILEPATH"
+
+          git add "$FILEPATH"
           echo "Committing: $FILEPATH"
 
           git add "$FILEPATH"
