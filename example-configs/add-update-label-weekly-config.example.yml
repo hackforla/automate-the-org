@@ -63,7 +63,7 @@ projectBoard:
 #   values are mapped in your project's label directory yml file- not here.
 #   The path to your label directory is here (do not change):
 
-labelDirectoryPath: "github-actions/workflow-configs/_data/label-directory.yml" 
+labelDirectoryPath: "github-actions/workflow-configs/_data/label-directory.json" 
 
 
 
@@ -75,26 +75,26 @@ labelDirectoryPath: "github-actions/workflow-configs/_data/label-directory.yml"
 
 labels:
   required:
-    # Required label keys: DO NOT REMOVE, confirm "values" in the label-directory.yml
+    # Required label keys: DO NOT REMOVE, confirm "values" in  `label-directory.json`
       # The following label "keys" must be mapped to your project's actual label name 
-      # "values" via the `label-directory.yml` file. The workflow uses these labels 
+      # "values" via the `label-directory.json` file. The workflow uses these labels 
       # to flag which issues need updates.
-    - statusUpdated                # Map in the `label-directory.yml` file
-    - statusInactive1              # Map in the `label-directory.yml` file
-    - statusInactive2              # Map in the `label-directory.yml` file
+    - statusUpdated                # Map in the `label-directory.json` file
+    - statusInactive1              # Map in the `label-directory.json` file
+    - statusInactive2              # Map in the `label-directory.json` file
 
     # Secondary key, used by message template
-    - statusHelpWanted             # Map in the `label-directory.yml` file
+    - statusHelpWanted             # Map in the `label-directory.json` file
 
   ignored:
     # Issues with these labels are ignored by the automation.
       # You may add or remove label "keys" from this list as desired- but be sure
-      # to map the added "key" to a "value" pair in your label-directory.yml file.
-    - draft                        # Map in the `label-directory.yml` file
-    - er                           # Map in the `label-directory.yml` file
-    - epic                         # Map in the `label-directory.yml` file
-    - dependency                   # Map in the `label-directory.yml` file
-    - complexity0                  # Map in the `label-directory.yml` file
+      # to map the added "key" to a "value" pair in your label-directory.json file.
+    - draft                        # Map in the `label-directory.json` file
+    - er                           # Map in the `label-directory.json` file
+    - epic                         # Map in the `label-directory.json` file
+    - dependency                   # Map in the `label-directory.json` file
+    - complexity0                  # Map in the `label-directory.json` file
 
 
 

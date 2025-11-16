@@ -3,8 +3,8 @@
 # ==============================================================================
 #
 # This should already be installed in your repo at 
-# `github-actions/workflow-configs/_data/label-directory.yml`. If this file is 
-# already installed, continue editing your existing `label-directory.yml` file.
+# `github-actions/workflow-configs/_data/label-directory.json`. If this file is 
+# already installed, continue editing your existing `label-directory.json` file.
 # 
 # This file maps label "keys" (left) used internally by the workflow to the 
 # actual label names "values" used in your GitHub repository (right side):

@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 _No unreleased changes yet._
 
+## v0.4.4
+2025-11-16
+- feat: incorporate generation of `label-directory.json`
+- fix: fixed multiple `label-directory.yml` --> `label-directory.json`
+
 ## v0.4.3
 2025-11-15
 - feat: Added script to update upstream (master) branch

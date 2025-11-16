@@ -8,6 +8,14 @@ on:
         description: 'Provide the name of the target repo, e.g. "org/project"'
         required: true
         type: string
+      source_repo:
+        description: 'Location of source files and automation trigger'
+        required: true
+        default: 'hackforla/automate-the-org'
+      github_app_name:
+        description: 'GitHub App name/slug'
+        required: true
+        default: 'hfla-workflow-rollout'
       dry_run:
         description: 'Dry-run mode: preview changes without creating PRs'
         type: boolean
@@ -22,10 +30,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate target_repo format
+        run: |
+          if [[ "${{ github.event.inputs.target_repo }}" != */* ]]; then
+            echo "Target repo must be in the format 'org/repo-name'. Exiting."
+            exit 1
+          fi
+
       - name: Checkout source repo
         uses: actions/checkout@v5
         with:
-          repository: hackforla/automate-the-org
+          repository: ${{ github.event.inputs.source_repo }}
           path: central
 
       - name: Generate token from GitHub App
@@ -113,19 +128,44 @@ jobs:
       - name: Export workflow inputs to environment
         run: |
           echo "TARGET_REPO=${{ github.event.inputs.target_repo }}" >> $GITHUB_ENV
+          echo "SOURCE_REPO=${{ github.event.inputs.source_repo }}" >> $GITHUB_ENV
           echo "DRY_RUN=${{ github.event.inputs.dry_run }}" >> $GITHUB_ENV
 
-      - name: Check whether label-directory.yml exists in target repo
-        id: check-label-dir
+          # Extract project name from target repo
+          PROJECT_NAME=$(echo "${TARGET_REPO}" | cut -d'/' -f2)
+          echo "PROJECT_NAME=${PROJECT_NAME}" >> $GITHUB_ENV
+
+          # Extract org name from source repo
+          ORG_NAME=$(echo "$SOURCE_REPO" | cut -d'/' -f1)
+          echo "ORG_NAME=${ORG_NAME}" >> $GITHUB_ENV
+
+      - name: Check whether label-directory.json exists in target repo
+        id: check-target-label-dir
         run: |
-          if [ -f "target/github-actions/workflow-configs/_data/label-directory.yml" ]; then
-            echo "LABEL_DIR_EXISTS=true" >> $GITHUB_ENV
+          if [ -f "target/github-actions/workflow-configs/_data/label-directory.json" ]; then
             echo "Label directory file exists in target repo. Do not proceed."
             exit 1
           else
-            echo "LABEL_DIR_EXISTS=false" >> $GITHUB_ENV
-            echo "Label directory file does not exist in target repo."
+            echo "Label directory file does not exist in target repo. Proceeding..."
           fi
+
+      - name: Check whether label-directory.<project_name>.json exists in source repo
+        id: check-source-label-dir
+        run: |
+          FILENAME="label-directory.${PROJECT_NAME}.json"
+          FILEPATH="central/example-configs/$FILENAME"
+
+          if [ -f "$FILEPATH" ]; then
+            echo "Label directory file exists in source repo. Do not proceed."
+            exit 1
+          else
+            echo "Label directory file does not exist in source repo. Proceeding..."
+          fi
+
+          # persist for downstream steps
+          echo "FILENAME=$FILENAME" >> $GITHUB_ENV
+          echo "FILEPATH=$FILEPATH" >> $GITHUB_ENV
+
       - name: Retrieve all labels from target repo
         id: retrieve-labels
         env:
@@ -150,9 +190,9 @@ jobs:
         env:
           LABELS_JSON: ${{ env.LABELS_JSON }}
         run: |
-          echo "Generating `label-directory.json` in source repo..."
+          echo "Generating `label-directory. < project_name > .json` in source repo..."
 
-          mkdir -p temp-label-data
+          mkdir -p example-configs
 
           node <<'EOF'
           const fs = require('fs');
@@ -180,7 +220,8 @@ jobs:
             }
           }
 
-          const filepath = path.join('temp-label-data', 'label-directory.json');
+          const filename = `label-directory.${process.env.PROJECT_NAME}.json`;
+          const filepath = path.join('central', 'example-configs', filename);
           fs.writeFileSync(filepath, JSON.stringify(labelDirectory, null, 2), 'utf8');
 
           console.log('Generated label-directory.json:');
@@ -189,11 +230,17 @@ jobs:
           EOF
 
           # persist FILEPATH for downstream steps
-          echo "FILEPATH=temp-label-data/label-directory.json" >> $GITHUB_ENV
-          echo "label-directory.json created at temp-label-data/label-directory.json"
+          echo "FILEPATH=$filepath" >> $GITHUB_ENV
+          echo "label-directory.json created at example-configs/label-directory.<PROJECT_NAME>.json"
 
-      - name: Upload label-directory.json artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: label-directory
-          path: temp-label-data/label-directory.json
+      - name: Commit file back to source repo
+        run: |
+          git config user.name "${{ github.event.inputs.github_app_name }}[bot]"
+          git config user.email "${{ github.event.inputs.github_app_name }}@${ORG_NAME}.org"
+
+          echo "Committing: $FILEPATH"
+
+          git add "$FILEPATH"
+          git commit -m "Add label directory file for project $PROJECT_NAME" || echo "No changes to commit."
+
+          git push

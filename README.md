@@ -116,7 +116,7 @@ Copy and rename the example configuration file from `example-configs/` into your
   ```
 See [example-configs/add-update-label-config.example.yml](./example-configs/add-update-label-config.example.yml) for a complete example.
 #### Step 3: Copy Label Directory 
-Copy and rename the example label directory file from `example-configs/` into your repo, then customize `.github/workflow-configs/label-directory.yml` to match the labels you are using in your project.
+Copy and rename the example label directory file from `example-configs/` into your repo, then customize `.github/workflow-configs/label-directory.json` to match the labels you are using in your project.
 
 
 ```bash
@@ -124,8 +124,8 @@ Copy and rename the example label directory file from `example-configs/` into yo
 mkdir -p .github/workflow-configs
 
 # Only if this file does not exist, copy to your local repo and rename 
-[ -f .github/workflow-configs/label-directory.yml ] && echo "File already exists" || curl -L https://github.com/hackforla/website/raw/main/workflow-configs/example-configs/label-directory.example.yml \
--o .github/workflow-configs/label-directory.yml
+[ -f .github/workflow-configs/_data/label-directory.json ] && echo "File already exists" || curl -L https://github.com/hackforla/website/raw/main/workflow-configs/example-configs/label-directory.example.yml \
+-o .github/workflow-configs/_data/label-directory.json
 ```
 Correlate the 'labelKey' values to the 'Label Names' that are applicable to your project in the format: 
 ```yml
@@ -136,7 +136,7 @@ labels:
   ...
 ```
 
-If you do not include the values in `.github/workflow-configs/_data/label-directory.yml`, the default values shown in `.github/workflow-configs/add-update-label-weekly-config.yml` will apply. For this workflow, the default values are: 
+If you do not include the values in `.github/workflow-configs/_data/label-directory.json`, the default values shown in `.github/workflow-configs/add-update-label-weekly-config.yml` will apply. For this workflow, the default values are: 
 
 ```yml
   # Required by the workflow:
@@ -156,7 +156,7 @@ If you do not include the values in `.github/workflow-configs/_data/label-direct
 Set the path in your config:
 
 ```bash
-labelDirectoryPath: ".github/workflow-configs/label-directory.yml"
+labelDirectoryPath: ".github/workflow-configs/_data/label-directory.json"
 ```
 See [example-configs/label-directory.example.yml](./example-configs/label-directory.example.example.yml) for a complete example.
 
@@ -313,7 +313,7 @@ function loadYourActionConfig({ projectRepoPath, configPath, overrides }) {
 
 ### resolve-labels.js
 
-- Loads and merges `label-directory.yml` file with overrides.
+- Loads and merges `label-directory.json` file with overrides.
 
 ### find-linked-issue.js
 

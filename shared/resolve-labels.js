@@ -8,7 +8,7 @@ const { logger } = require('./format-log-messages');
  * Resolves label keys to actual label names from a project's label directory
  * @param {Object} options
  * @param {string} options.projectRepoPath          - Path to the project repository
- * @param {string} options.labelDirectoryPath       - Relative path to `label-directory.yml`
+ * @param {string} options.labelDirectoryPath       - Relative path to `label-directory.json`
  * @param {Array<string>} options.requiredLabelKeys - Required label keys for workflow
  * @param {Array<string>} options.optionalLabelKeys - Optional label keys for workflow
  * @returns {Object}                                - Map of labelKeys to Label Names

@@ -34829,7 +34829,7 @@ const { logger } = __nccwpck_require__(2515);
  * Resolves label keys to actual label names from a project's label directory
  * @param {Object} options
  * @param {string} options.projectRepoPath          - Path to the project repository
- * @param {string} options.labelDirectoryPath       - Relative path to `label-directory.yml`
+ * @param {string} options.labelDirectoryPath       - Relative path to `label-directory.json`
  * @param {Array<string>} options.requiredLabelKeys - Required label keys for workflow
  * @param {Array<string>} options.optionalLabelKeys - Optional label keys for workflow
  * @returns {Object}                                - Map of labelKeys to Label Names
@@ -36893,7 +36893,7 @@ async function run() {
     logger.log(``);
     
     // Determine label directory path from config
-    const labelDirectoryPath = config.labelDirectoryPath || 'github-actions/workflow-configs/_data/label-directory.yml';
+    const labelDirectoryPath = config.labelDirectoryPath || 'github-actions/workflow-configs/_data/label-directory.json';
     
     // Resolve label keys to label names
     logger.step(`Resolving labels...`);
@@ -36980,7 +36980,7 @@ function getDefaultConfigs() {
     
     commentTemplate: getDefaultCommentTemplate(),
     
-    labelDirectoryPath: 'github-actions/workflow-configs/_data/label-directory.yml',
+    labelDirectoryPath: 'github-actions/workflow-configs/_data/label-directory.json',
   };
 }
 

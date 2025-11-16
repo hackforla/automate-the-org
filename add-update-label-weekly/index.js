@@ -61,7 +61,7 @@ async function run() {
     logger.log(``);
     
     // Determine label directory path from config
-    const labelDirectoryPath = config.labelDirectoryPath || 'github-actions/workflow-configs/_data/label-directory.yml';
+    const labelDirectoryPath = config.labelDirectoryPath || 'github-actions/workflow-configs/_data/label-directory.json';
     
     // Resolve label keys to label names
     logger.step(`Resolving labels...`);
@@ -148,7 +148,7 @@ function getDefaultConfigs() {
     
     commentTemplate: getDefaultCommentTemplate(),
     
-    labelDirectoryPath: 'github-actions/workflow-configs/_data/label-directory.yml',
+    labelDirectoryPath: 'github-actions/workflow-configs/_data/label-directory.json',
   };
 }
 
