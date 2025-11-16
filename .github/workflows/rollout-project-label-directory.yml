@@ -149,7 +149,7 @@ jobs:
             echo "Label directory file does not exist in target repo. Proceeding..."
           fi
 
-      - name: Check whether label-directory.<project_name>.json exists in source repo
+      - name: Check whether label-directory.json exists in source repo
         id: check-source-label-dir
         run: |
           FILENAME="label-directory.${PROJECT_NAME}.json"
@@ -235,8 +235,10 @@ jobs:
 
       - name: Commit file back to source repo
         run: |
-          # git config user.name "${{ github.event.inputs.github_app_name }}[bot]"
-          # git config user.email "${{ github.event.inputs.github_app_name }}@${ORG_NAME}.org"
+          cd central
+          
+          git config user.name "${{ github.event.inputs.github_app_name }}[bot]"
+          git config user.email "${{ github.event.inputs.github_app_name }}@${ORG_NAME}.org"
 
           echo "Committing: $FILEPATH"
 
