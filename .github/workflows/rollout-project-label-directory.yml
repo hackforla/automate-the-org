@@ -46,10 +46,19 @@ jobs:
       - name: Generate token from GitHub App
         id: generate-app-token
         run: |
+          # Prevent partial command failures
+          set -o pipefail
+          
           # Generate JWT for GitHub App authentication
-          echo "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > key.pem
+          printf "%s" "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > key.pem
           chmod 600 key.pem
 
+          # Ensure key is written correctly
+          if [[ ! -s key.pem ]]; then
+            echo "Error: private key is empty or missing"
+            exit 1
+          fi
+          
           NOW=$(date +%s)
           IAT=$((NOW - 60))
           EXP=$((NOW + 600))
@@ -58,20 +67,20 @@ jobs:
           PAYLOAD="{\"iat\":${IAT},\"exp\":${EXP},\"iss\":\"${{ secrets.HFLA_WORKFLOW_APP_ID }}\"}"
           
           encode_url() {
-            openssl base64 -e | tr '+/' '-_' | tr -d '='
+            openssl base64 -e | tr '+/' '-_' | tr -d '=\n\r'
           }
           
           HEADER_B64=$(echo -n "$HEADER" | encode_url)
           PAYLOAD_B64=$(echo -n "$PAYLOAD" | encode_url)
           SIGNATURE=$(
-            echo -n "${HEADER_B64}.${PAYLOAD_B64}" \
+            printf "%s" "${HEADER_B64}.${PAYLOAD_B64}" \
               | openssl dgst -sha256 -sign key.pem \
               | encode_url
           )
           
           JWT="${HEADER_B64}.${PAYLOAD_B64}.${SIGNATURE}"
           echo "::add-mask::$JWT"
-          
+
           # Retrieve installation ID
           INSTALLATION_ID=$(curl -s \
             -H "Authorization: Bearer ${JWT}" \
