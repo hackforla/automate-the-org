@@ -235,8 +235,8 @@ jobs:
 
       - name: Commit file back to source repo
         run: |
-          git config user.name "${{ github.event.inputs.github_app_name }}[bot]"
-          git config user.email "${{ github.event.inputs.github_app_name }}@${ORG_NAME}.org"
+          # git config user.name "${{ github.event.inputs.github_app_name }}[bot]"
+          # git config user.email "${{ github.event.inputs.github_app_name }}@${ORG_NAME}.org"
 
           echo "Committing: $FILEPATH"
 
