@@ -1,4 +1,4 @@
-name: Rollout Workflow to Project
+name: Rollout Workflow to Project - Rev 4
 
 on:
   workflow_dispatch:
@@ -141,7 +141,7 @@ jobs:
 
           echo "DEST_FILEPATH=$DEST_FILEPATH" >> $GITHUB_ENV
 
-      - name: Check whether label-directory.<project_name>.json exists in source repo
+      - name: Check whether label-directory.{project_name}.json exists in source repo
         id: check-source-label-dir
         run: |
           if [[ "$TARGET_EXISTS" == "true" ]]; then
