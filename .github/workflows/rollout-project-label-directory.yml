@@ -149,7 +149,7 @@ jobs:
             echo "Label directory file does not exist in target repo. Proceeding..."
           fi
 
-      - name: Check whether label-directory.<project_name>.json exists in source repo
+      - name: Check whether label-directory.{PROJECT_NAME}.json exists in source repo
         id: check-source-label-dir
         run: |
           FILENAME="label-directory.${PROJECT_NAME}.json"
@@ -190,7 +190,7 @@ jobs:
         env:
           LABELS_JSON: ${{ env.LABELS_JSON }}
         run: |
-          echo "Generating `label-directory. < project_name > .json` in source repo..."
+          echo "Generating label-directory.{PROJECT_NAME}.json in source repo..."
 
           mkdir -p example-configs
 
@@ -224,14 +224,12 @@ jobs:
           const filepath = path.join('central', 'example-configs', filename);
           fs.writeFileSync(filepath, JSON.stringify(labelDirectory, null, 2), 'utf8');
 
-          console.log('Generated label-directory.json:');
+          console.log(`Generated label-directory.json at FILEPATH = ${filepath}:`);
           console.log(JSON.stringify(labelDirectory, null, 2));
-          console.log('FILEPATH=' + filepath);
           EOF
 
           # persist FILEPATH for downstream steps
           echo "FILEPATH=$filepath" >> $GITHUB_ENV
-          echo "label-directory.json created at example-configs/label-directory.<PROJECT_NAME>.json"
 
       - name: Commit file back to source repo
         run: |
