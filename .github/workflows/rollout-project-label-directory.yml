@@ -148,6 +148,16 @@ jobs:
           else
             echo "Label directory file does not exist in target repo. Proceeding..."
           fi
+          
+      - name: Debug - List central directory contents
+        run: |
+          echo "Contents of central/:"
+          ls -la central/ || echo "central/ does not exist"
+          echo ""
+          echo "Contents of central/example-configs/:"
+          ls -la central/example-configs/ || echo "central/example-configs/ does not exist"
+          echo ""
+          echo "Looking for: central/example-configs/label-directory.${PROJECT_NAME}.json"
 
       - name: Check whether label-directory.json exists in source repo
         id: check-source-label-dir
