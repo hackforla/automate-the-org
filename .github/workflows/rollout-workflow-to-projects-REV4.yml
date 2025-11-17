@@ -36,6 +36,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout source repo
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ github.event.inputs.source_repo }}
+          path: central
+          
       - name: Generate token from GitHub App
         id: generate-app-token
         run: |
@@ -113,18 +119,20 @@ jobs:
 
       - name: Prepare variables
         run: |
-          echo "TARGET_REPO=${{ github.event.inputs.target_repo }}" >> $GITHUB_ENV
-          echo "SOURCE_REPO=${{ github.event.inputs.source_repo }}" >> $GITHUB_ENV
-          echo "ROLLOUT_BRANCH=${{ github.event.inputs.rollout_branch }}" >> $GITHUB_ENV
-          echo "TEMPLATE_FILE=${{ github.event.inputs.template_file }}" >> $GITHUB_ENV
-          echo "DRY_RUN=${{ github.event.inputs.dry_run }}" >> $GITHUB_ENV
-
-          # Extract project name from target repo
+          TARGET_REPO="${{ github.event.inputs.target_repo }}"
+          SOURCE_REPO="${{ github.event.inputs.source_repo }}"
+          ROLLOUT_BRANCH="${{ github.event.inputs.rollout_branch }}"
+          TEMPLATE_FILE="${{ github.event.inputs.template_file }}"
+          DRY_RUN="${{ github.event.inputs.dry_run }}"
           PROJECT_NAME=$(echo "${TARGET_REPO}" | cut -d'/' -f2)
-          echo "PROJECT_NAME=${PROJECT_NAME}" >> $GITHUB_ENV
-
-          # Extract org name from source repo
           ORG_NAME=$(echo "$SOURCE_REPO" | cut -d'/' -f1)
+                 
+          echo "TARGET_REPO=${TARGET_REPO}" >> $GITHUB_ENV
+          echo "SOURCE_REPO=${SOURCE_REPO}" >> $GITHUB_ENV
+          echo "ROLLOUT_BRANCH=${ROLLOUT_BRANCH}" >> $GITHUB_ENV
+          echo "TEMPLATE_FILE=${TEMPLATE_FILE}" >> $GITHUB_ENV
+          echo "DRY_RUN=${DRY_RUN}" >> $GITHUB_ENV
+          echo "PROJECT_NAME=${PROJECT_NAME}" >> $GITHUB_ENV
           echo "ORG_NAME=${ORG_NAME}" >> $GITHUB_ENV
 
       - name: Check whether label-directory.json exists in target repo
