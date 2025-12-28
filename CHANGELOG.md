@@ -15,7 +15,6 @@ _No unreleased changes yet._
 - refactor: renaming main folder --> `gha-add-update-label-weekly` to accommodate fut. ghas
 - refactor: remove overly specific ref to template in `resolve-config.js`
 
-
 ## v0.6.0
 2025-12-03
 - docs: remove "Planned-for-Future" `CHANGELOG.md`
