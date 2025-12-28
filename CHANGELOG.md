@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
+_No unreleased changes yet._
+
+## v0.6.1
+2025-12-28
 - refactor: renaming main folder --> `gha-add-update-label-weekly` to accommodate fut. ghas
 - refactor: remove overly specific ref to template in `resolve-config.js`
 
