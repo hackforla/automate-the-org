@@ -6,7 +6,7 @@ on:
       target_repo:
         description: 'Destination repo, e.g. "org/project":'
         required: true
-        default: 'hackforla/'
+        default: 'hackforla/<project-repo>'
       source_repo:
         description: 'Source repo, e.g. "org/central-repo":'
         required: true
