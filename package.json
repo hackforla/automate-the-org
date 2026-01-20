@@ -1,6 +1,6 @@
 {
   "name": "automate-the-org",
-  "version": "0.6.5",
+  "version": "0.6.6",
   "description": "Centralized GitHub Actions for repository maintenance and automation across the organization.",
   "private": true,
   "main": "dist/index.js",
