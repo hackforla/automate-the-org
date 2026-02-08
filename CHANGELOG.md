@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
+_No unreleased changes yet._
+
+## v0.7.0
+2026-02-08
 - feat: removing the requirement for the workflow to install or reference the `label-directory-json`- removal will make it more intuitive for the PMs to specify which labels to use; the label names will be specified in the general `add-update-label-weekly-config.yml` config file rather than the label directory
 - docs: `pr_template_add_update.md` major rewrite of comments, also remove refs to `label-directory.json`
 - feat: `rollout-workflow-to-project.yml` remove refs to `label-directory.json`, check whether workflow is already installed, add warning if so, and automatically add the project name to the triggering workflow template
