@@ -28778,55 +28778,6 @@ var require_add_update_label_weekly = __commonJS({
   }
 });
 
-// package.json
-var require_package = __commonJS({
-  "package.json"(exports2, module2) {
-    module2.exports = {
-      name: "add-update-label-weekly",
-      version: "1.0.6",
-      description: "Centralized GitHub Actions for repository maintenance and automation across the organization.",
-      private: true,
-      main: "dist/index.js",
-      scripts: {
-        build: "esbuild gha-add-update-label-weekly/index.js --bundle --platform=node --target=node20 --format=cjs --conditions=import --outfile=gha-add-update-label-weekly/dist/index.js",
-        "build:all": "npm run build",
-        test: 'echo "Error: no test specified" && exit 1',
-        lint: 'echo "Add linting script here"',
-        format: 'echo "Add formatting script here"'
-      },
-      repository: {
-        type: "git",
-        url: "git+https://github.com/hackforla/automate-the-org.git"
-      },
-      keywords: [
-        "github-actions",
-        "automation",
-        "maintenance",
-        "issues",
-        "pull-requests",
-        "project-management"
-      ],
-      author: "Hack for LA",
-      license: "MIT",
-      bugs: {
-        url: "https://github.com/hackforla/automate-the-org.git"
-      },
-      homepage: "https://github.com/hackforla/automate-the-org.git",
-      dependencies: {
-        "@actions/core": "^3.0.0",
-        "@actions/github": "^9.0.0",
-        "js-yaml": "^4.1.0"
-      },
-      devDependencies: {
-        esbuild: "^0.27.3"
-      },
-      engines: {
-        node: ">=20.0.0"
-      }
-    };
-  }
-});
-
 // gha-add-update-label-weekly/index.js
 var core2 = (init_core(), __toCommonJS(core_exports));
 var github = (init_github(), __toCommonJS(github_exports));
