@@ -8,7 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
-_No unreleased changes yet._
+- feat: `rollout-project-label-suggestions.yml` refactor — converted from `workflow_dispatch` to `workflow_call` only; now triggered as a second job (`Label-Suggestions`) from `rollout-workflow-to-project.yml` via `needs:` + `secrets: inherit`
+- feat: `rollout-project-label-suggestions.yml` — add step to extract `required`, `filtering`, `skills_issue`, and `projectBoard` identifiers from `add-update-label-weekly-config.example.yml` and pass as env vars to `find-similar-identifiers.js`
+- feat: `rollout-project-label-suggestions.yml` — add GraphQL step to retrieve Project V2 status-column names from destination repo
+- feat: `rollout-project-label-suggestions.yml` — add step to pre-fill installed config file with best-match suggestions using `yq env(VALUE)`, then commit and push to rollout branch
+- feat: `rollout-project-label-suggestions.yml` — add step to post PR comment with markdown suggestion tables (required labels, filtering labels, modifying labels, project board status columns)
+- feat: `rollout-workflow-to-project.yml` — add `Label-Suggestions` job calling `rollout-project-label-suggestions.yml` after PR creation
+- refactor: `rollout-workflow-to-project.yml` — replace hardcoded `hackforla` org in installation URL with `TARGET_ORG` derived from `target_repo` input
+- feat: rename `find-similar-labels.js` → `find-similar-identifiers.js`; refactor to read all inputs from env vars, match both labels and project board status columns, write `suggestions.json` and `pr-comment.md`
 
 ## v1.0.7
 2026-03-09

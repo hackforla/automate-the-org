@@ -44,7 +44,7 @@ jobs:
           trap 'rm -f key.pem' EXIT
           
           # Generate JWT for GitHub App authentication
-          printf "%s" "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > key.pem
+          printf "%s" "${{ secrets.HFLA_GRAPHQL_APP_PRIVATE_KEY }}" > key.pem
           chmod 600 key.pem
 
           # Ensure key is written correctly
@@ -58,7 +58,7 @@ jobs:
           EXP=$((NOW + 600))
           
           HEADER='{"alg":"RS256","typ":"JWT"}'
-          PAYLOAD="{\"iat\":${IAT},\"exp\":${EXP},\"iss\":\"${{ secrets.HFLA_WORKFLOW_APP_ID }}\"}"
+          PAYLOAD="{\"iat\":${IAT},\"exp\":${EXP},\"iss\":\"${{ secrets.HFLA_GRAPHQL_APP_ID }}\"}"
           
           encode_url() {
             openssl base64 -e | tr '+/' '-_' | tr -d '=\n\r'
