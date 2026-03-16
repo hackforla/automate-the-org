@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
+_No unreleased changes yet._
+
+## v1.1.0
+2026-03-16
 - fix: fix two-pass label matching and upstream major tag push
 - feat: prevent claimed prefills from appearing in others lists (two-pass match)
 - feat: filter labels containing "missing" from suggestion pool
