@@ -63,13 +63,13 @@ labels:
 #   and b.) **have installed the "Member Activity Trigger" workflow**.  
 #   Currently, the only team this applies to is the Website team. 
 #
-# The `modifying` section includes label(s) that change the workflow of the 
-# workflow. For example, the `skills_issue` label is used to identify issues 
-# related to skills development. These issues use different criteria for 
-# determining their update status and are never unassigned. 
-
-  # modifying:
-  #   - "complexity: Prework"
+# The `modifying` section defines labels that adjust how the workflow behaves 
+# under specific conditions. For example, when the automation encounters an 
+# issue labeled as a Skills Issue, it applies an alternate set of criteria to 
+# determine the issue’s update status. Additionally, issues in this category 
+# remain permanently assigned and are not subject to automatic unassignment. 
+# This allows the workflow to adapt dynamically to different issue types while
+# preserving expected behavior for specialized cases.
 
 
 
@@ -79,9 +79,7 @@ labels:
 #
 # Each issue's update status is determined by comparing the timestamp of the 
 # assignee's last update with the time thresholds following. These thresholds
-# have been assigned default values- refer to:
-# 
-#   "https://github.com/search?q=repo%3Ahackforla%2Fautomate-the-org+%22function+getDefaultConfigs%22&type=code"
+# have been assigned default values as shown below.
 # 
 # ONLY IF NEEDED: You may override the default values to fit your project's needs.
 # Note, however, that the following values must be ordered from smallest to largest:
@@ -90,7 +88,7 @@ labels:
 #   needsUpdatingByDays:   Issues not updated for this many days are prompted for update
 #   isInactiveByDays:      Issues not updated for this many days are marked as inactive
 #   unassignedByDays:      Issues not updated for this many days have assignees removed <-- FUTURE FEATURE
-#   upperLimitDays:        Bot comments older than this not processed for minimization
+#   upperLimitDays:        Bot comments older than this not processed for minimization <-- see below
 
 timeframes:
   recentlyUpdatedByDays: 3
@@ -120,6 +118,12 @@ timeframes:
 #
 #  targetStatus:    Required for inclusion in update checks
 #  questionsStatus: Optional; assignees may move issues here to skip checks
+#
+# The status-column values shown below in "double quotes" are default values 
+# only. Each of these values **must exactly match an existing status-column** 
+# in your Project Board. Change each value as needed for an exact match, ensure 
+# each value is in double quotes, then to show that you have reviewed and 
+# confirmed the values, **delete the comment**.
 
 projectBoard:
   targetStatus: "In progress (actively working)" # <-- confirm default value

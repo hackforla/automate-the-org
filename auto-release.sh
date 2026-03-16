@@ -110,7 +110,7 @@ mv "$TMP_FILE" "$CHANGELOG"
 git add "$CHANGELOG" "$PACKAGE_JSON"
 git commit -m "Update CHANGELOG and package.json for $NEW_VERSION release"
 
-# --- 12. Push changes to origin---
+# --- 12. Push changes to origin ---
 git push origin $CURRENT_BRANCH
 git push origin $NEW_VERSION
 

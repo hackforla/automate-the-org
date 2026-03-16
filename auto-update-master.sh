@@ -3,11 +3,11 @@ set -euo pipefail
 
 # To use: Run this only after all changes have been pushed to `master` branch.
 
-# --- CONFIG ---
+# --- 0. Pre-flight checks ---
 echo "This script will push the latest git tag to the 'upstream' remote."
 echo "  Note: Includes the major version floating tag update." 
-echo -e "\nHave you run './auto-release.sh' AND pushed changes to 'master' branch? (y/N) "
-read -rp "" CONFIRM
+echo ""
+read -rp "Have you run './auto-release.sh' AND pushed changes to 'master' branch? (y/N) " CONFIRM
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
   echo "Upstream update canceled. Please run './auto-release.sh' and push changes to 'master' first. Exiting."
   exit 0
@@ -75,17 +75,16 @@ if [[ $LAST_TAG =~ $VERSION_REGEX ]]; then
     # --- Update major tag pointing to the commit behind LAST_TAG ---
     git tag -f "$FLOATING_BRANCH" "$LAST_TAG"
     
-    # --- Optional verification ---
-    FLOAT_SHA=$(git rev-parse "$FLOATING_BRANCH")
-    LAST_SHA=$(git rev-parse "$LAST_TAG")
+    # --- Verify floating tag ---
+    FLOAT_SHA=$(git rev-parse "$FLOATING_BRANCH"^{})
+    LAST_SHA=$(git rev-parse "$LAST_TAG"^{})
     if [[ "$FLOAT_SHA" != "$LAST_SHA" ]]; then
       echo "❌ Major tag verification failed. Aborting push."
       exit 1
     fi
     
     # --- Push major tag to upstream ---
-    git push upstream --delete "$FLOATING_BRANCH" 2>/dev/null || echo "Tag didn't exist on upstream or couldn't be deleted"
-    git push upstream "refs/tags/$FLOATING_BRANCH"
+    git push upstream "refs/tags/$FLOATING_BRANCH" --force
 
     echo -e "\n✅ Version $FLOATING_BRANCH on upstream updated to $LAST_TAG!"
   else
