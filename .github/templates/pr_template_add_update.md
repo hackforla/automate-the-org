@@ -35,7 +35,7 @@ This PR adds the "Add Update Label Weekly" GitHub Actions workflow to your proje
 - Monitors open, assigned issues with the default status "In progress (actively working)"
 - Checks for recent update comments from assignees
 - Posts reminders for devs to provide issue progress updates
-- Labels issues that need to be checked on
+- Labels issues that need updates as well as issues that are considered inactive
 
 ### Security
 
@@ -50,14 +50,24 @@ This PR adds the "Add Update Label Weekly" GitHub Actions workflow to your proje
       - Adjust the cron schedule as needed for your project (https://crontab.cronhub.io/). 
       - Current cron is scheduled to run Fridays at 0700 UTC, every week except in July and December.
     - `github-actions/workflow-configs/add-update-label-weekly-config.yml`
-      - Configure specific values where shown on the config YML, but do not edit the keys or change the formatting except as explicitly noted. 
-      - The `labels` section includes lists of label key values that represent actual repo labels: 
-        - The `required:` section shows label placeholder keys that are essential to the workflow. Each label key must be mapped to an actual label name used in your repo, but do not change the key itself. 
-        - The `filtering:` section includes keys to labels which, when added to an issue, tell the workflow to omit the issue from the update checks. In other words, an issue that is labeled with one of the 'filtering' labels will be ignored by the workflow. Match each label key shown with an actual label name. If you do not need a value, replace it with "".
-        - Preliminary label names may be shown. Confirm that all label names shown here exist in your repo or change as needed. 
-      - Configure the values for `timeframes:` referring to the notes in this section.
-      - Configure the `projectBoard:` column-status names. Similar to the labels section, confirm the default values shown or where needed change to match your Project Board. Do not delete or edit the keys themselves.
-      - Configure any remaining values as needed. 
+ - This configuration file lists all workflow variables that can be customized to match the specific conditions of your project.
+      - Each variable has been assigned a default value. Before you run the workflow, carefully review each variable and edit the provided value so that it matches the value used in your repository, or in the case of the "Time thresholds", to set the behavior you want.
+      - Configure the values only as specified. Do not edit the variable keys or change the file formatting, otherwise the workflow may crash or behave unexpectedly.
+      - `"Labels and label placeholders used by this workflow"`
+        - The `labels:` section includes different categories of labels. Each label name appears in "double quotes" and must match an existing label in your repository exactly.
+          - The `required:` section lists label placeholder keys that are essential to the workflow. Each key must map- exactly- to an actual label in your project. 
+          - The `filtering:` section specifies labels that exclude certain issues from update checks. If an issue has any of these labels, the workflow will skip that issue and not process it.
+          - See the config.yml for additional instructions.
+      - `"Time thresholds (in days)"`
+        - The `timeframes:` section defines placeholder keys that represent time thresholds, measured in days. Each issue’s update status is determined by comparing the assignee’s most recent activity timestamp against these defined thresholds. 
+        - Default values are provided and **can be used as-is without modifications**. See the config.yml for detailed explanations and, only if needed, for instructions for customizing these values.
+      - `"Project Board status-column configuration"`
+        - The `projectBoard:` section defines placeholder keys representing Project Board status-column names. Similar to the required labels, each placeholder status-column key must map exactly to a status-column on your Project Board.
+        - Change the values as needed for an exact match, and ensure the status-column value is in double quotes.
+      - `"Bot configuration"`
+        - This section should not need any edits.
+      - `"Bot comment template"`
+        - For the optional variable `teamSlackChannel`: Add your team's Slack Channel (once again in "double quotes") if you want this info on the Bot comment template.  
     - `github-actions/workflow-configs/templates/add-update-instructions-template.md`
       - We recommend keeping this version. If needed, edit using markdown syntax.
 

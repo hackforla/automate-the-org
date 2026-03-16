@@ -203,61 +203,12 @@ jobs:
             -H "Accept: application/vnd.github+json" > all_labels.json
 
           # Create compact list of label names
-          jq -c '[.[].name]' all_labels.json > repoLabels.json
+          jq -c '[.[].name | select(ascii_downcase | contains("missing") | not)]' all_labels.json > repoLabels.json
 
           echo "Retrieved labels:"
           cat repoLabels.json
 
           echo "REPO_LABELS=$(jq -c . repoLabels.json)" >> $GITHUB_ENV
-
-      - name: Retrieve Project V2 status column names from destination repo
-        id: retrieve-project-status
-        env:
-          GITHUB_TOKEN: ${{ steps.generate-app-token.outputs.token }}
-        run: |
-          set -e
-          echo "Retrieving Project V2 status column names from '$TARGET_REPO'..."
-
-          gh api graphql -f query='
-            query($owner: String!, $repo: String!) {
-              repository(owner: $owner, name: $repo) {
-                projectsV2(first: 20) {
-                  nodes {
-                    title
-                    fields(first: 20) {
-                      nodes {
-                        ... on ProjectV2SingleSelectField {
-                          name
-                          options {
-                            name
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          ' -f owner="$TARGET_ORG" -f repo="$PROJECT_NAME" > project_fields.json
-
-          # Fail fast if GraphQL returned errors
-          if jq -e '.errors' project_fields.json > /dev/null 2>&1; then
-            echo "::error title=GraphQL error::Project V2 query returned errors"
-            jq '.errors' project_fields.json
-            exit 1
-          fi
-
-          # Extract all option names from fields named "Status" across all projects, compacted
-          PROJ_STATUS_COLS=$(jq -c '[
-            .data.repository.projectsV2.nodes[].fields.nodes[]
-            | select(.name == "Status")
-            | .options[].name
-          ] | unique' project_fields.json)
-
-          echo "Retrieved status columns:"
-          echo "$PROJ_STATUS_COLS"
-
-          echo "PROJ_STATUS_COLS=$PROJ_STATUS_COLS" >> $GITHUB_ENV
 
       - name: Switch to rollout branch in destination repo
         id: switch-branch
@@ -286,87 +237,6 @@ jobs:
           TEMPLATE_FILE: ${{ env.TEMPLATE_FILE }}
         run: |
           node central/.github/workflow-helpers/find-similar-identifiers.js
-
-      - name: Apply suggestions to config file
-        id: apply-suggestions
-        if: steps.switch-branch.outputs.rollout_branch_exists == 'true'
-        run: |
-          set -e
-
-          # Derive installed config path from template name
-          CONFIG_FILENAME=$(echo "$TEMPLATE_FILE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-          CONFIG_FILE="target/github-actions/workflow-configs/${CONFIG_FILENAME}-config.yml"
-
-          if [[ ! -f "$CONFIG_FILE" ]]; then
-            echo "::warning title=Config file not found::Expected config at $CONFIG_FILE — skipping pre-fill"
-            exit 0
-          fi
-
-          echo "Applying best-match suggestions to $CONFIG_FILE..."
-
-          # Apply required label suggestions (object keys — use env(YQ_KEY) to avoid shell interpolation in path)
-          jq -r '.required | to_entries[] | select(.value.prefill != null) | "\(.key)\t\(.value.prefill)"' suggestions.json | \
-          while IFS=$'\t' read -r key suggestion; do
-            echo "  labels.required.$key -> $suggestion"
-            export YQ_KEY="$key"
-            VALUE="$suggestion" yq e \
-              '.labels.required[env(YQ_KEY)] = env(VALUE) | (.labels.required[env(YQ_KEY)] | style) = "double"' \
-              -i "$CONFIG_FILE"
-          done
-
-          # Apply filtering label suggestions (array — match by value)
-          jq -r '.filtering | to_entries[] | select(.value.prefill != null) | "\(.key)\t\(.value.prefill)"' suggestions.json | \
-          while IFS=$'\t' read -r old_val new_val; do
-            echo "  labels.filtering: $old_val -> $new_val"
-            OLD="$old_val" NEW="$new_val" yq e \
-              '(.labels.filtering[] | select(. == env(OLD))) = env(NEW)' -i "$CONFIG_FILE"
-            NEW="$new_val" yq e \
-              '(.labels.filtering[] | select(. == env(NEW)) | style) = "double"' -i "$CONFIG_FILE"
-          done
-
-          # Apply modifying (skills_issue) label suggestions (array — match by value)
-          if jq -e '.modifying' suggestions.json > /dev/null 2>&1; then
-            jq -r '.modifying | to_entries[] | select(.value.prefill != null) | "\(.key)\t\(.value.prefill)"' suggestions.json | \
-            while IFS=$'\t' read -r old_val new_val; do
-              echo "  labels.skills_issue: $old_val -> $new_val"
-              OLD="$old_val" NEW="$new_val" yq e \
-                '(.labels.skills_issue[] | select(. == env(OLD))) = env(NEW)' -i "$CONFIG_FILE"
-              NEW="$new_val" yq e \
-                '(.labels.skills_issue[] | select(. == env(NEW)) | style) = "double"' -i "$CONFIG_FILE"
-            done
-          fi
-
-          # Apply status column suggestions (object keys — use env(YQ_KEY))
-          jq -r '(.statusCols // {}) | to_entries[] | select(.value.prefill != null) | "\(.key)\t\(.value.prefill)"' suggestions.json | \
-          while IFS=$'\t' read -r key suggestion; do
-            echo "  projectBoard.$key -> $suggestion"
-            export YQ_KEY="$key"
-            VALUE="$suggestion" yq e \
-              '.projectBoard[env(YQ_KEY)] = env(VALUE) | (.projectBoard[env(YQ_KEY)] | style) = "double"' \
-              -i "$CONFIG_FILE"
-          done
-
-      # - name: Commit and push updated config
-      #   id: commit-config
-      #   if: steps.switch-branch.outputs.rollout_branch_exists == 'true'
-      #   run: |
-      #     set -e
-      #     cd target
-
-      #     CONFIG_FILENAME=$(echo "$TEMPLATE_FILE" | tr '[:upper:]' '[:lower:]' | tr ' ' '-')
-      #     CONFIG_FILE="github-actions/workflow-configs/${CONFIG_FILENAME}-config.yml"
-
-      #     git config user.name "hfla-graphql-app[bot]"
-      #     git config user.email "hfla-graphql-app@users.noreply.github.com"
-
-      #     git add "$CONFIG_FILE"
-      #     if git diff --staged --quiet; then
-      #       echo "No suggestions applied — config unchanged."
-      #     else
-      #       git commit -m "Pre-fill config with best-match label suggestions"
-      #       git push origin "$ROLLOUT_BRANCH"
-      #       echo "Pushed updated config to $ROLLOUT_BRANCH"
-      #     fi
 
       - name: Post suggestions as PR comment
         id: post-pr-comment

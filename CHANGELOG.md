@@ -10,6 +10,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 _No unreleased changes yet._
 
+## v1.1.0
+2026-03-16
+- fix: fix two-pass label matching and upstream major tag push
+- feat: prevent claimed prefills from appearing in others lists (two-pass match)
+- feat: filter labels containing "missing" from suggestion pool
+- fix: force-push major tag on upstream instead of delete+push
+- feat: update PR template, config example, and instructions template wording
+
 ## v1.0.9
 2026-03-09
 - fix label modifying
