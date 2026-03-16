@@ -17,6 +17,7 @@ _No unreleased changes yet._
 - feat: filter labels containing "missing" from suggestion pool
 - fix: force-push major tag on upstream instead of delete+push
 - feat: update PR template, config example, and instructions template wording
+- bug: removed attempt to match project board status-columns (too many variations, projects with multiple boards attached)
 
 ## v1.0.9
 2026-03-09
