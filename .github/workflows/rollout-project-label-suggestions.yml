@@ -16,6 +16,9 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: read
+
 jobs:
   Rollout-Label-Directory:
     runs-on: ubuntu-latest
