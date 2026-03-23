@@ -229,7 +229,7 @@ jobs:
           # Template is at: central/.github/templates/pr_template_add_update.md
           # WORKFLOW_SRC_RAW is relative to that location (e.g., ../../example-configs/file.yml)
           WORKFLOW_SRC="central/.github/templates/$WORKFLOW_SRC_RAW"
-          WORKFLOW_SRC=$(python3 -c "import os; print(os.path.normpath('$WORKFLOW_SRC'))")
+          WORKFLOW_SRC=$(python3 -c "import os,sys; print(os.path.normpath(sys.argv[1]))" "$WORKFLOW_SRC")
           
           echo "WORKFLOW_SRC=$WORKFLOW_SRC" >> $GITHUB_ENV
           echo "WORKFLOW_DEST=$WORKFLOW_DEST" >> $GITHUB_ENV
@@ -245,7 +245,7 @@ jobs:
             
             # Resolve relative path from template directory
             SRC_FULL="central/.github/templates/$SRC_RAW"
-            SRC_RESOLVED=$(python3 -c "import os; print(os.path.normpath('$SRC_FULL'))")
+            SRC_RESOLVED=$(python3 -c "import os,sys; print(os.path.normpath(sys.argv[1]))" "$SRC_FULL")
             
             # Append to resolved config file
             jq --arg src "$SRC_RESOLVED" --arg dest "$DEST" '. += [{src: $src, dest: $dest}]' config_files.json > config_files_temp.json
@@ -303,6 +303,12 @@ jobs:
           DEFAULT_BRANCH=$(gh api repos/$REPO --jq '.default_branch'\
             -H "Authorization: token $GH_TOKEN")
           echo "Default branch: $DEFAULT_BRANCH"
+
+          # Guard: rollout branch must not be the default branch
+          if [[ "$ROLLOUT_BRANCH" == "$DEFAULT_BRANCH" ]]; then
+            echo "::error title=Invalid rollout branch::rollout_branch cannot be the default branch ($DEFAULT_BRANCH)"
+            exit 1
+          fi
 
           # Only in 'DRY_RUN' mode
           if [ "$DRY_RUN" = "true" ]; then
