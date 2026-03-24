@@ -26,6 +26,7 @@ jobs:
     steps:
       - name: Validate target_repo format
         run: |
+          set -e
           if [[ "${{ inputs.target_repo }}" != */* ]]; then
             echo "::error title=Invalid destination repo format::Destination repo must be in the format 'org/repo-name'"
             exit 1
@@ -40,8 +41,7 @@ jobs:
       - name: Generate token from GitHub App
         id: generate-app-token
         run: |
-          # Prevent partial command failures
-          set -o pipefail
+          set -eo pipefail
 
           # Ensure key cleanup even if the script exits early
           trap 'rm -f key.pem' EXIT
@@ -108,7 +108,8 @@ jobs:
             "repositories": ["'"${PROJECT_NAME}"'"],
             "permissions": {
               "contents": "read",
-              "pull_requests": "write"
+              "pull_requests": "write",
+              "projects": "read"
             }
           }')
           
@@ -138,6 +139,7 @@ jobs:
 
       - name: Export workflow inputs to environment
         run: |
+          set -e
           TARGET_REPO="${{ inputs.target_repo }}"
           SOURCE_REPO="${{ inputs.source_repo }}"
           TEMPLATE_FILE="${{ inputs.template_file }}"
@@ -211,6 +213,77 @@ jobs:
           cat repoLabels.json
 
           echo "REPO_LABELS=$(jq -c . repoLabels.json)" >> $GITHUB_ENV
+
+      - name: Retrieve Project V2 status column names
+        id: retrieve-status-cols
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-app-token.outputs.token }}
+        run: |
+          set -e
+          echo "Retrieving ProjectV2 status columns from '$TARGET_REPO'..."
+
+          QUERY=$(cat <<'GRAPHQL'
+          query($owner: String!, $repo: String!) {
+            repository(owner: $owner, name: $repo) {
+              projectsV2(first: 20) {
+                nodes {
+                  title
+                  number
+                  field(name: "Status") {
+                    ... on ProjectV2SingleSelectField {
+                      options {
+                        name
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          GRAPHQL
+          )
+
+          GRAPHQL_RESPONSE=$(gh api graphql \
+            -f query="$QUERY" \
+            -f owner="$TARGET_ORG" \
+            -f repo="$PROJECT_NAME" 2>&1) || {
+            echo "::warning title=GraphQL request failed::Could not retrieve ProjectV2 status columns. The token may be missing 'projects: read' permission."
+            echo "Raw response: $GRAPHQL_RESPONSE"
+            echo "PROJ_STATUS_COLS=[]" >> $GITHUB_ENV
+            exit 0
+          }
+
+          # Diagnostic: show raw projectsV2 data
+          echo "--- Raw projectsV2 response ---"
+          echo "$GRAPHQL_RESPONSE" | jq '.data.repository.projectsV2'
+
+          PROJECT_COUNT=$(echo "$GRAPHQL_RESPONSE" | jq '.data.repository.projectsV2.nodes | length')
+          echo "Projects linked to repo: $PROJECT_COUNT"
+
+          if [[ "$PROJECT_COUNT" -eq 0 ]]; then
+            echo "::warning title=No projects found::No ProjectV2 boards found linked to $TARGET_REPO. Status column suggestions will be skipped."
+            echo "PROJ_STATUS_COLS=[]" >> $GITHUB_ENV
+          else
+            # Per-project breakdown
+            echo "--- Per-project status options ---"
+            echo "$GRAPHQL_RESPONSE" | jq -r '
+              .data.repository.projectsV2.nodes[] |
+              "Project \(.number): \(.title) — " +
+              if .field then (.field.options | map(.name) | join(", "))
+              else "no Status field found"
+              end'
+
+            # Flatten all status option names across all projects, deduplicated
+            PROJ_STATUS_COLS=$(echo "$GRAPHQL_RESPONSE" | jq -c '
+              [ .data.repository.projectsV2.nodes[]
+                | select(.field != null)
+                | .field.options[].name ]
+              | unique')
+
+            echo "--- Flattened status columns ---"
+            echo "$PROJ_STATUS_COLS"
+            echo "PROJ_STATUS_COLS=$PROJ_STATUS_COLS" >> $GITHUB_ENV
+          fi
 
       - name: Switch to rollout branch in destination repo
         id: switch-branch

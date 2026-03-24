@@ -20,7 +20,7 @@ on:
 jobs:
   Add-Update-Label-Weekly:
     runs-on: ubuntu-latest
-    if: github.repository == 'hackforla/<repo-name>'
+    if: github.repository == '<ORG_NAME>/<REPO_NAME>'
     steps:
       - name: Generate token from GitHub App
         id: generate-app-token

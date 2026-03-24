@@ -272,12 +272,17 @@ if (modifying.length > 0) {
 if (Object.keys(statusCols).length > 0) {
   md.push('### Project Board status-columns');
   md.push('');
-  md.push('| Key value<br>(Do not change) | Default value | Suggested value<br>(from your repo) |');
-  md.push('|:---:|:---:|:---|');
-  Object.entries(statusColSuggestions).forEach(([key, { configValue }]) => {
-    const best   = `_NOTE: Review your project's actual status-columns<br>&emsp;&emsp;and **manually** update the config.yml file_`;
-    md.push(`| ${key}: | "${configValue}" | ${best} |`);
-  });
+  if (projStatusCols.length === 0) {
+    md.push('_No status columns were retrieved from the destination repo. Review your project board manually and update the config file._');
+  } else {
+    md.push('| Key value<br>(Do not change) | Default value | Suggested value<br>(from your repo) | Other suggestions |');
+    md.push('|:---:|:---:|:---:|:---|');
+    Object.entries(statusColSuggestions).forEach(([key, { configValue, prefill, suggestions }]) => {
+      const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';
+      const others = suggestions.map(s => `"${s}"`).join(', ') || '—';
+      md.push(`| ${key}: | "${configValue}" | ${best} | ${others} |`);
+    });
+  }
   md.push('');
 }
 

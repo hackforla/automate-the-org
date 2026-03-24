@@ -49,12 +49,11 @@ jobs:
       - name: Generate token from GitHub App
         id: generate-app-token
         run: |
-          # Prevent partial command failures
-          set -o pipefail
+          set -eo pipefail
 
           # Ensure key cleanup even if the script exits early
           trap 'rm -f key.pem' EXIT
-          
+
           # Generate JWT for GitHub App authentication
           printf "%s" "${{ secrets.HFLA_WORKFLOW_APP_PRIVATE_KEY }}" > key.pem
           chmod 600 key.pem
@@ -143,6 +142,7 @@ jobs:
         env:
           APP_TOKEN: ${{ steps.generate-app-token.outputs.token }}
         run: |
+          set -e
           TARGET_REPO="${{ github.event.inputs.target_repo }}"
           PROJECT_NAME=$(echo "${TARGET_REPO}" | cut -d'/' -f2)
           echo "Validating write permissions on $TARGET_REPO..."
@@ -169,6 +169,7 @@ jobs:
 
       - name: Prepare variables
         run: |
+          set -e
           # Select correct template file based on input
           case "${{ github.event.inputs.template_file }}" in
             "Add Update Label Weekly")
@@ -198,6 +199,7 @@ jobs:
       - name: Extract rollout config from PR template
         id: parse-config
         run: |
+          set -e
           # Check if source file exists
           TEMPLATE_PATH="central/.github/templates/$TEMPLATE_FILE"
 
@@ -261,6 +263,7 @@ jobs:
       - name: Check if workflow file already exists in target repo
         id: check-workflow-exists
         run: |
+          set -e
           # Check if the workflow file already exists in the target repo
           if [[ -f "$WORKFLOW_DEST" ]]; then
             echo "::warning title=Workflow file already exists::Workflow file already exists at $WORKFLOW_DEST in target repository. It may be overwritten."
@@ -296,8 +299,9 @@ jobs:
 
       - name: Rollout to destination repo
         env:
-          APP_TOKEN: ${{ steps.generate-app-token.outputs.token }} 
+          APP_TOKEN: ${{ steps.generate-app-token.outputs.token }}
         run: |
+          set -e
           REPO="$TARGET_REPO"
           echo "Processing repo: $REPO . . ."
           export GH_TOKEN="$APP_TOKEN"
@@ -371,14 +375,14 @@ jobs:
             git checkout -b "$ROLLOUT_BRANCH"
           fi
 
-          # Copy workflow file using workspace-relative path and replace "<repo-name>" placeholder
+          # Copy workflow file using workspace-relative path and replace "<ORG_NAME>/<REPO_NAME>" placeholder
           # $WORKFLOW_SRC is now relative to $GITHUB_WORKSPACE
           mkdir -p "$(dirname "$WORKFLOW_DEST")"
-          sed "s/<repo-name>/$PROJECT_NAME/g" "$GITHUB_WORKSPACE/$WORKFLOW_SRC" > "$WORKFLOW_DEST"
-          if grep -q "<repo-name>" "$WORKFLOW_DEST"; then
-            echo "::warning title=Placeholder not replaced::The placeholder <repo-name> was not found or not replaced in the workflow file at $WORKFLOW_DEST"
+          sed "s|<ORG_NAME>/<REPO_NAME>|$TARGET_REPO|g" "$GITHUB_WORKSPACE/$WORKFLOW_SRC" > "$WORKFLOW_DEST"
+          if grep -q "<ORG_NAME>/<REPO_NAME>" "$WORKFLOW_DEST"; then
+            echo "::warning title=Placeholder not replaced::The placeholder <ORG_NAME>/<REPO_NAME> was not found or not replaced in the workflow file at $WORKFLOW_DEST"
           fi
-          echo "Copied and processed workflow: $WORKFLOW_SRC -> $WORKFLOW_DEST (replaced <repo-name> with $PROJECT_NAME)"
+          echo "Copied and processed workflow: $WORKFLOW_SRC -> $WORKFLOW_DEST (replaced <ORG_NAME>/<REPO_NAME> with $TARGET_REPO)"
 
           # Copy project-specific config files using resolved paths
           if [ -s "$GITHUB_WORKSPACE/config_files.json" ]; then
