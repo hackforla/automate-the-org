@@ -3,7 +3,7 @@ set -euo pipefail
 
 # To use: Run after committing all changes (see `README.md` and `CHANGELOG.md`).
 # Updates the version tag for the CURRENT_BRANCH of the remote ORIGIN.
-# Use `./auto-update-master.sh` for versioning master on remote UPSTREAM.
+# Use `./auto-update-main.sh` for versioning main on remote UPSTREAM.
 
 # --- CONFIG ---
 CHANGELOG="CHANGELOG.md"
@@ -132,5 +132,5 @@ git push origin $MAJOR_TAG --force
 
 echo -e "\n✅ Major tag $MAJOR_TAG updated to $NEW_VERSION"
 
-# --- 14. Reminder to update master ---
-echo -e "\n🔔 Reminder: Run './auto-update-master.sh' to update the master branch with the latest changes."
+# --- 14. Reminder to update main ---
+echo -e "\n🔔 Reminder: Run './auto-update-main.sh' to update the main branch with the latest changes."

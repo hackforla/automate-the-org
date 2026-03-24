@@ -13,29 +13,13 @@ To install a centralized GitHub Actions (GHA) to a project repo, follow these st
   - For both, first scroll to "Repository access", then "Only select repositories", then select the corresponding project repo in the "Select repositories" dropdown.  
   - Click "Save".
 
-- (Recommended) Run the **Rollout Project Label Suggestions** workflow.
-  <details>  
-  &emsp;  
-
-  1. From the "Automate the ORG" repo, select "Actions", then select "Rollout Project Label Suggestions" on the left.  
-  2. On the right, click on "Run workflow" to bring up installation options.  
-  3. Confirm that the `master` branch is selected.  
-  4. Enter the `<project-repo>` for the "Destination repo".  
-  5. Do not change the "Source repo".
-  6. Do not change the "Branch name" or "GitHub App" name. 
-  7. Keep box checked for "Dry run mode". 
-  8. Click "Run workflow". If successful, the "DRY-RUN" output will be found in "Rollout to destination repo".
-  9. Review the Dry-Run results. If these are what you were expecting, run again with "Dry run mode" unchecked.
-  </details>  
-  &emsp;
-
 - Run the **"Rollout Workflow to Project"** workflow from "Automate the ORG". 
   <details>  
   &emsp;  
 
   1. From the "Automate the ORG" repo, select "Actions", then select "Rollout Workflow to Project" on the left.  
   2. On the right, click on "Run workflow" to bring up installation options.  
-  3. Confirm that the `master` branch is selected.  
+  3. Confirm that the `main` branch is selected.  
   4. Enter the `<project-repo>` for the "Destination repo".  
   5. Do not change the "Source repo".
   6. Select which GitHub Action you would like installed
@@ -79,7 +63,7 @@ workflow-configs/
 │
 ├── .gitignore 
 ├── auto-release.sh                     # Script for updating version on a branch
-├── auto-update-master.sh               # Script for updating version on the master
+├── auto-update-main.sh               # Script for updating version on the main
 ├── package.json                        
 ├── package-lock.json                   
 ├── CHANGELOG.md                        # Change log for tracking changes per version
@@ -356,12 +340,12 @@ git commit -m "new release build"
 git push
 ```
 
-Update the [CHANGELOG.md](https://github.com/hackforla/automate-the-org/blob/master/CHANGELOG.md) with the latest changes (using prefixes such as "fix: " or "feat: " -see `CHANGELOG.md`) as needed, then double-check the most recent version:
+Update the [CHANGELOG.md](https://github.com/hackforla/automate-the-org/blob/main/CHANGELOG.md) with the latest changes (using prefixes such as "fix: " or "feat: " -see `CHANGELOG.md`) as needed, then double-check the most recent version:
 
 ```bash
 git tag
 ```
-This should match the most recent version listed in the `CHANGELOG.md`, which should also match the latest version listed in [package.json](https://github.com/hackforla/automate-the-org/blob/master/package.json). If it doesn't, then you may need to manually correct the versions.
+This should match the most recent version listed in the `CHANGELOG.md`, which should also match the latest version listed in [package.json](https://github.com/hackforla/automate-the-org/blob/main/package.json). If it doesn't, then you may need to manually correct the versions.
 
 Now run the automatic versioning utility. This will check whether you have set an `upstream`, and ask whether the next version should be a patch, minor, or major version change per [semver](https://semver.org/) (e.g. version MAJOR.MINOR.PATCH):
 
@@ -369,10 +353,10 @@ Now run the automatic versioning utility. This will check whether you have set a
 ```bash
 ./auto-release.sh
 ```
-Once the final commit is made to the `master` branch at Automate-the-ORG:
+Once the final commit is made to the `main` branch at Automate-the-ORG:
 
 ```bash
-./auto-update-master.sh
+./auto-update-main.sh
 ```
 
 #### Versioning adjustments
@@ -384,7 +368,7 @@ Use the following for adjustments to the version tags (but only if you understan
   git push origin --delete <version>
   ```
   _Remember to adjust `CHANGELOG.md` and `package.json` also._
-- If you did not set your upstream branch but pushed the version anyway, you will need to set your `upstream` to `master` branch, then:
+- If you did not set your upstream branch but pushed the version anyway, you will need to set your `upstream` to `main` branch, then:
   ```bash
   git push upstream <version>
   ```

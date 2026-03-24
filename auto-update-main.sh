@@ -1,15 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-# To use: Run this only after all changes have been pushed to `master` branch.
+# To use: Run this only after all changes have been pushed to `main` branch.
 
 # --- 0. Pre-flight checks ---
 echo "This script will push the latest git tag to the 'upstream' remote."
 echo "  Note: Includes the major version floating tag update." 
 echo ""
-read -rp "Have you run './auto-release.sh' AND pushed changes to 'master' branch? (y/N) " CONFIRM
+read -rp "Have you run './auto-release.sh' AND pushed changes to 'main' branch? (y/N) " CONFIRM
 if [[ ! "$CONFIRM" =~ ^[Yy]$ ]]; then
-  echo "Upstream update canceled. Please run './auto-release.sh' and push changes to 'master' first. Exiting."
+  echo "Upstream update canceled. Please run './auto-release.sh' and push changes to 'main' first. Exiting."
   exit 0
 fi
 
