@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       target_repo:
-        description: 'Destination repo, e.g. "org/project":'
+        description: 'Destination repo, e.g. "org/project-repo":'
         required: true
         default: 'hackforla/'
       source_repo:
@@ -30,7 +30,7 @@ on:
       dry_run:
         description: 'Dry-run mode: preview changes only'
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: read

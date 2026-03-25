@@ -109,7 +109,7 @@ jobs:
             "permissions": {
               "contents": "read",
               "pull_requests": "write",
-              "projects": "read"
+              "organization_projects": "read"
             }
           }')
           
@@ -229,6 +229,7 @@ jobs:
                 nodes {
                   title
                   number
+                  shortDescription
                   field(name: "Status") {
                     ... on ProjectV2SingleSelectField {
                       options {
@@ -247,42 +248,53 @@ jobs:
             -f query="$QUERY" \
             -f owner="$TARGET_ORG" \
             -f repo="$PROJECT_NAME" 2>&1) || {
-            echo "::warning title=GraphQL request failed::Could not retrieve ProjectV2 status columns. The token may be missing 'projects: read' permission."
+            echo "::warning title=GraphQL request failed::Could not retrieve ProjectV2 status columns. The token may be missing 'organization_projects: read' permission."
             echo "Raw response: $GRAPHQL_RESPONSE"
             echo "PROJ_STATUS_COLS=[]" >> $GITHUB_ENV
             exit 0
           }
 
-          # Diagnostic: show raw projectsV2 data
-          echo "--- Raw projectsV2 response ---"
-          echo "$GRAPHQL_RESPONSE" | jq '.data.repository.projectsV2'
-
           PROJECT_COUNT=$(echo "$GRAPHQL_RESPONSE" | jq '.data.repository.projectsV2.nodes | length')
           echo "Projects linked to repo: $PROJECT_COUNT"
+
+          # Diagnostic: per-project breakdown
+          echo "--- Per-project breakdown ---"
+          echo "$GRAPHQL_RESPONSE" | jq -r '
+            .data.repository.projectsV2.nodes[] |
+            "Project \(.number): \(.title)" +
+            " | shortDescription: \(.shortDescription // "none")" +
+            " | Status options: " +
+            if .field then (.field.options | map(.name) | join(", "))
+            else "no Status field"
+            end'
 
           if [[ "$PROJECT_COUNT" -eq 0 ]]; then
             echo "::warning title=No projects found::No ProjectV2 boards found linked to $TARGET_REPO. Status column suggestions will be skipped."
             echo "PROJ_STATUS_COLS=[]" >> $GITHUB_ENV
           else
-            # Per-project breakdown
-            echo "--- Per-project status options ---"
-            echo "$GRAPHQL_RESPONSE" | jq -r '
-              .data.repository.projectsV2.nodes[] |
-              "Project \(.number): \(.title) — " +
-              if .field then (.field.options | map(.name) | join(", "))
-              else "no Status field found"
-              end'
-
-            # Flatten all status option names across all projects, deduplicated
-            PROJ_STATUS_COLS=$(echo "$GRAPHQL_RESPONSE" | jq -c '
+            # Match the project whose shortDescription contains the target repo URL
+            TARGET_URL="https://github.com/$TARGET_REPO"
+            MATCH_COUNT=$(echo "$GRAPHQL_RESPONSE" | jq --arg url "$TARGET_URL" '
               [ .data.repository.projectsV2.nodes[]
-                | select(.field != null)
-                | .field.options[].name ]
-              | unique')
+                | select(.shortDescription != null and (.shortDescription | contains($url))) ]
+              | length')
 
-            echo "--- Flattened status columns ---"
-            echo "$PROJ_STATUS_COLS"
-            echo "PROJ_STATUS_COLS=$PROJ_STATUS_COLS" >> $GITHUB_ENV
+            echo "Projects matching shortDescription '$TARGET_URL': $MATCH_COUNT"
+
+            if [[ "$MATCH_COUNT" -ne 1 ]]; then
+              echo "::warning title=Project board not identified::Could not uniquely identify the project board for $TARGET_REPO via shortDescription. Status column suggestions will be skipped."
+              echo "PROJ_STATUS_COLS=[]" >> $GITHUB_ENV
+            else
+              PROJ_STATUS_COLS=$(echo "$GRAPHQL_RESPONSE" | jq -c --arg url "$TARGET_URL" '
+                [ .data.repository.projectsV2.nodes[]
+                  | select(.shortDescription != null and (.shortDescription | contains($url)))
+                  | select(.field != null)
+                  | .field.options[].name ]')
+
+              echo "--- Matched project status columns ---"
+              echo "$PROJ_STATUS_COLS"
+              echo "PROJ_STATUS_COLS=$PROJ_STATUS_COLS" >> $GITHUB_ENV
+            fi
           fi
 
       - name: Switch to rollout branch in destination repo
@@ -312,6 +324,17 @@ jobs:
           TEMPLATE_FILE: ${{ env.TEMPLATE_FILE }}
         run: |
           node central/.github/workflow-helpers/find-similar-identifiers.js
+
+      - name: Preview PR comment
+        run: |
+          if [[ "${{ steps.switch-branch.outputs.rollout_branch_exists }}" != "true" ]]; then
+            echo "[DRY-RUN] PR comment preview:"
+          else
+            echo "PR comment preview:"
+          fi
+          echo "----------------------------------"
+          cat pr-comment.md
+          echo "----------------------------------"
 
       - name: Post suggestions as PR comment
         id: post-pr-comment

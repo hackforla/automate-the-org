@@ -229,14 +229,20 @@ const md = [];
 
 md.push('## Label & Project Board Suggestions');
 md.push('');
-md.push(`The following tables list workflow variables, such as labels and Project Board status-columns, that must be configured before using the workflow. The "Default value" is from this PR's configuration file. The "Suggested value" is the closest match to the default that the automation found in your repo, with "Other suggestions" listing the next closest matches. These suggestions are meant to help you fill in the config file with the correct values from your repo.`);
-md.push(``);
-md.push(`Please review the "Suggested value(s)" shown and update the attached config file before committing this PR.`);;
+md.push(`This PR includes a configuration file with variables — specifically labels and Project Board status-columns — that must be updated to match values already used in your project before the installed workflow will run correctly.  Referring to the tables:`);
+md.push(`- The "Key value" is the reference variable used by the workflow- do not change this.`);
+md.push(`- The "Default value" is what is currently written in the config file. It is a placeholder meant to show you the format and type of information expected.`);
+md.push('');
+md.push(`Review each default value and make sure it matches exactly what you use in your own repo or Project Board. To make this easier:`);
+md.push(`- The "Suggested value" is the value that the automation found in your repo which seems to be the closest or an exact match.`);
+md.push(`- The "Other suggestions" values are additional possible matches if there is no close match or if the suggested value is not correct.`);
+md.push('');
+md.push(`Please review the defaults and suggestions, select the correct value from your repo, and **update the attached configuration file** before committing this PR.`);
 md.push('');
 
 md.push('### Required label(s)');
 md.push('');
-md.push('| Key value<br>(Do not change) | Default value | Suggested value<br>(from your repo) | Other suggestions |');
+md.push('| Key value<br>(Do not change) | Default value<br>(in config file) | Suggested value<br>(from your repo) | Other suggestions |');
 md.push('|:---:|:---:|:---:|:---|');
 Object.entries(requiredSuggestions).forEach(([key, { configValue, prefill, suggestions }]) => {
   const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';
@@ -247,7 +253,7 @@ md.push('');
 
 md.push('### Filtering label(s)');
 md.push('');
-md.push('| Key value<br>(N/A) | Default value | Suggested value<br>(from your repo) | Other suggestions |');
+md.push('| Key value<br>(N/A) | Default value<br>(in config file) | Suggested value<br>(from your repo) | Other suggestions |');
 md.push('|:---:|:---:|:---:|:---|');
 Object.entries(filteringSuggestions).forEach(([label, { prefill, suggestions }]) => {
   const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';
@@ -259,7 +265,7 @@ md.push('');
 if (modifying.length > 0) {
   md.push('### Modifying label(s)');
   md.push('');
-  md.push('| Key value<br>(Do not change) | Default value | Suggested value<br>(from your repo) | Other suggestions |');
+  md.push('| Key value<br>(Do not change) | Default value<br>(in config file) | Suggested value<br>(from your repo) | Other suggestions |');
   md.push('|:---:|:---:|:---:|:---|');
   Object.entries(modifyingSuggestions).forEach(([label, { prefill, suggestions }]) => {
     const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';
@@ -273,9 +279,14 @@ if (Object.keys(statusCols).length > 0) {
   md.push('### Project Board status-columns');
   md.push('');
   if (projStatusCols.length === 0) {
-    md.push('_No status columns were retrieved from the destination repo. Review your project board manually and update the config file._');
+    md.push('| Key value<br>(Do not change) | Default value<br>(in config file) | Suggested value<br>(from your repo) |');
+    md.push('|:---:|:---:|:---|');
+    Object.entries(statusColSuggestions).forEach(([key, { configValue }]) => {
+      const best = '_Unable to identify the Project Board attached to this repo. Configure<br>the "Default" to match an exact value from your Project Board._';
+      md.push(`| ${key}: | "${configValue}" | ${best} | `);
+    });
   } else {
-    md.push('| Key value<br>(Do not change) | Default value | Suggested value<br>(from your repo) | Other suggestions |');
+    md.push('| Key value<br>(Do not change) | Default value<br>(value in config file) | Suggested value<br>(from your repo) | Other suggestions |');
     md.push('|:---:|:---:|:---:|:---|');
     Object.entries(statusColSuggestions).forEach(([key, { configValue, prefill, suggestions }]) => {
       const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';

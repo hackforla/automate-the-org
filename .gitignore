@@ -31,6 +31,8 @@ tmp/
 temp/
 not-used-delete/
 
+# Assets for future
+.github/assets/
 
 # Reserved files
 reserve-files/
