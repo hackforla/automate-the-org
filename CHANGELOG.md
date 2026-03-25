@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
+_No unreleased changes yet._
+
+## v1.2.0
+2026-03-25
 Security:
 - fix: Replaced Python string interpolation with sys.argv[1] to prevent script injection
 - fix: Changed sed delimiter to | to safely handle slashes in repo names
