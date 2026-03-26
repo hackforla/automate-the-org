@@ -50,8 +50,8 @@ This PR adds the "Add Update Label Weekly" GitHub Actions workflow to your proje
       - Adjust the cron schedule as needed for your project (https://crontab.cronhub.io/). 
       - Current cron is scheduled to run Fridays at 0700 UTC, every week except in July and December.
     - `github-actions/workflow-configs/add-update-label-weekly-config.yml`
- - This configuration file lists all workflow variables that can be customized to match the specific conditions of your project.
-      - Each variable has been assigned a default value. Before you run the workflow, carefully review each variable and edit the provided value so that it matches the value used in your repository, or in the case of the "Time thresholds", to set the behavior you want.
+      - This configuration file lists all workflow variables that can be customized to match the specific conditions of your project.
+      - Each variable has been assigned a default value. Before you run the workflow, carefully review each variable and edit the provided value so that it matches a value used in your repository, or in the case of the "Time thresholds", to set the behavior you want.
       - Configure the values only as specified. Do not edit the variable keys or change the file formatting, otherwise the workflow may crash or behave unexpectedly.
       - `"Labels and label placeholders used by this workflow"`
         - The `labels:` section includes different categories of labels. Each label name appears in "double quotes" and must match an existing label in your repository exactly.

@@ -8,32 +8,30 @@ Centralized GitHub Actions for repository maintenance and automation across the 
 To install a centralized GitHub Actions (GHA) to a project repo, follow these steps:  
 
 - Configure the **GitHub Apps**
-  - Make sure that the project name ( e.g. `org/project-repo`) is selected on the two organizational GitHub Apps- these are used for authentication:  
-    - [hfla-workflow-rollout](https://github.com/organizations/hackforla/settings/installations/92646041) gives "Automate the ORG" (source) access to the project (destination) repo during installation.  
-    - [hfla-graphql-app](https://github.com/organizations/hackforla/settings/installations/92507394) gives the project (destination) repo access to scripts in "Automate the ORG" (source) during the workflow's runtime.  
+  - The workflows use centrally-maintained GitHub Apps for authorization and authentication. The GitHub Apps must be configured to allow repository access on a project-by-project basis. Access must be granted before running the workflow; however once done, projects do not need to create or maintain tokens or secrets.   
+  - Make sure that the project name ( e.g. `org/project-repo`) is selected on the two organizational GitHub Apps:  
+    - [hfla-workflow-rollout](https://github.com/organizations/hackforla/settings/installations/92646041): Gives "Automate the ORG" (source) access to the project (destination) repo during installation.  
+    - [hfla-graphql-app](https://github.com/organizations/hackforla/settings/installations/92507394): Gives the project (destination) repo access to scripts in "Automate the ORG" (source) during the workflow's runtime.  
   - For both, first scroll to "Repository access", then "Only select repositories", then select the corresponding project repo in the "Select repositories" dropdown.  
   - Click "Save".
 
-- Run the **"Rollout Workflow to Project"** workflow from "Automate the ORG". 
-  <details>  
-  &emsp;  
+- Run the **"Rollout Workflow to Project"** workflow from "Automate the ORG"  
 
-  1. From the "Automate the ORG" repo, select "Actions", then select "Rollout Workflow to Project" on the left.  
+  1. From the "Automate the ORG" repo, select "Actions", then "Rollout Workflow to Project" on the left.  
   2. On the right, click on "Run workflow" to bring up installation options.  
   3. Confirm that the `main` branch is selected.  
-  4. Enter the `project-repo` for the "Destination repo".  
+  4. Enter the `org/project-repo` for the "Destination repo".  
   5. Do not change the "Source repo".
   6. Select which GitHub Action you would like installed.
   7. Do not change the "Branch name" or "GitHub App" name. 
   8. To rollout the workflow, make sure that "Dry-run mode" is not checked, then click "Run workflow". The automation will generate the installation PR in the destination repo.
   9. OPTIONAL: Only if you would like to check whether the automation will generate the expected values, check the box for "Dry-run mode" and click "Run workflow".  
-&emsp;a. Successful runs (without errors) will be shown with green checks.  
-&emsp;b. When the workflow completes, click on the most recent "Rollout Workflow to Project", then on the next screen click on "Rollout-Workflow". Scroll down and open "Rollout to destination repo" for the dry-run report to see if this is what you expect.
-&emsp;c. Next you can click on "Label-Suggestions/Rollout-Label-Directory", then scroll down to "Preview PR comment". This will show the text for the supplemental comment on the PR.
-
- 
+    a. Successful, error-free runs will be shown with green checks.  
+    b. When the workflow completes, click on the most recent "Rollout Workflow to Project", then on the next screen click on "Rollout-Workflow". Scroll down and open "Rollout to destination repo" for the dry-run report to see if this is what you expect.  
+    c. Next, click on "Label-Suggestions/Rollout-Label-Directory", then scroll down to "Preview PR comment". This will show the text for the supplemental comment on the PR.
   </details>  
   &emsp;  
+
 
 
 ## Repository Structure
@@ -76,7 +74,9 @@ workflow-configs/
 ```
 <br />
 
-## Available Actions
+
+## Available Actions  
+
 
 ### Add Update Label Weekly
 
@@ -113,100 +113,11 @@ Choose your desired workflow, then follow the steps to implement it in your repo
 - Ensures ongoing communication, accountability, and support across active tasks.
 
 
-These are configurable, see [Step 2: Customize Config →](#step-2-customize-config):  
-<sub>&emsp; <sup>1</sup> Project Board status  
-&emsp; <sup>2</sup> All time periods  
+These are configurable to match your repo, see [Step 2: Customize Config →](#step-2-customize-config):  
+<sub>&emsp; <sup>1</sup> Project Board status-columns  
+&emsp; <sup>2</sup> All time thresholds used by the automation  
 &emsp; <sup>3</sup> Reminder message  
 &emsp; <sup>4</sup> All label names</sub>  
-
-### Implementing in Your Project
-
-#### tbc
-
-### How to Install 
-:warning: **Warning:** Do not manually install unless you have a great reason! You should be using the ATO automation `rollout-workflow-to-project.yml` to automatically generate a pull request that is already formatted with everything needed to install this workflow.  
-
-If you proceed anyway: 
-#### Step 0: Copy and rename the three workflow files that you need for your workflow. (coming soon)
-
-#### Step 1: Copy GitHub Actions Workflow YML 
-Copy and rename the example GitHub Actions Workflow YML from `example-configs/` into your repo, then customize `.github/workflows/add-update-label-weekly.yml` for cron schedule, project repo path, and PAT. 
-
-```bash
-# Ensure target folder exists
-mkdir -p .github/workflow-configs
-
-# Copy and rename the remote file into your local repo
-curl -L https://github.com/hackforla/website/raw/main/workflow-configs/example-configs/add-update-label-weekly.example.yml \
--o .github/workflows/add-update-label-weekly.yml
-```
-See [example-configs/add-update-label-weekly.example.yml](./example-configs/add-update-label-weekly.example.yml) for a complete example.
-
-#### Step 2: Copy and Customize Config File
-Copy and rename the example configuration file from `example-configs/` into your repo, then customize `add-update-label-weekly-config.yml` for your project's needs.
-
-  ```bash
-  # Ensure target folder exists
-  mkdir -p .github/workflow-configs
-
-  # Copy and rename the remote file into your local repo
-  curl -L https://github.com/hackforla/website/raw/main/workflow-configs/example-configs/add-update-label-weekly-config.example.yml \
-  -o .github/workflow-configs/add-update-label-weekly-config.yml
-  ```
-
-
-
-Correlate the 'labelKey' values to the 'Label Names' that are applicable to your project in the format: 
-```yml
-labels:
-  ...
-  labelKey1: "Label Name 1"
-  labelKey2: "Label Name 2'
-  ...
-```
-
-If you do not include the values in the config files, the default values shown in `.github/workflow-configs/add-update-label-weekly-config.yml` will apply. For this workflow, the default values are: 
-
-```yml
-# Required by the workflow:
-labels:
-  required:
-    statusUpdated: "Status: Updated"
-    statusInactive1: "Status: To Update!"
-    statusInactive2: "Status: 2 weeks inactive"
-    statusHelpWanted: "Status: Help Wanted"
-
-# Filtering labels, exclude issues with any of these labels: 
-  filtering:
-   - "Draft"
-   - "ER"
-   - "Epic"
-   - "Dependency"
-  #  - ""
-  #  - ""
-```
-See [example-configs/add-update-label-config.example.yml](./example-configs/add-update-label-config.example.yml) for a complete example.
-
-
-#### Step 4: Using Tokens and Secrets
-
-These workflows use centrally maintained GitHub Apps to authorize and authenticate workflows, including  
-`hfla-graphql-app` and `hfla-workflow-rollout`. The GitHub Apps can be configured to allow repository  
-access on a project-by-project basis. Access must be granted before running the workflow locally; however,  
-since the App is maintained centrally projects do not need to create tokens or secrets. 
-
-
-### Action Inputs
-
-| Input | Description |  Default |
-|-------|-------------|----------|
-| `config-path` | Path to config YAML in your repo | `.github/workflow-configs/`<br>`add-update-label-weekly-config.yml` |
-| `recently-updated-by-days` | Override: days for "current" threshold | From config |
-| `needs-updating-by-days` | Override: days for first notice | From config |
-| `is-inactive-by-days` | Override: days for second notice | From config |
-| `target-status` | Override: Project Board status | From config |
-
-
 
 
 
@@ -324,6 +235,7 @@ Test actions in a separate test repository before releasing next version.
 5. Create example config in `example-configs/`
 6. Update this README
 
+---
 ### Versioning
 
 Make all necessary changes and commit as usual:
@@ -335,7 +247,7 @@ git push
 ```
 _Note: as always, use `git add .` or `git add <individual file>` as appropriate_
 
-Rebuild the `@vercel/ncc` files, then re-commit: 
+Rebuild the `esbuild` files, then re-commit: 
 
 ```bash
 npm install
@@ -344,15 +256,15 @@ git add .
 git commit -m "new release build"
 git push
 ```
-
+#### Update the CHANGELOG.md
 Update the [CHANGELOG.md](https://github.com/hackforla/automate-the-org/blob/main/CHANGELOG.md) with the latest changes (using prefixes such as "fix: " or "feat: " -see `CHANGELOG.md`) as needed, then double-check the most recent version:
 
 ```bash
 git tag
 ```
 This should match the most recent version listed in the `CHANGELOG.md`, which should also match the latest version listed in [package.json](https://github.com/hackforla/automate-the-org/blob/main/package.json). If it doesn't, then you may need to manually correct the versions.
-
-Now run the automatic versioning utility. This will check whether you have set an `upstream`, and ask whether the next version should be a patch, minor, or major version change per [semver](https://semver.org/) (e.g. version MAJOR.MINOR.PATCH):
+#### Run the automatic versioning utilities
+Now run the automatic versioning utilities. These will check whether you have set an `upstream`, and ask whether the next version should be a patch, minor, or major version change per [semver](https://semver.org/) (e.g. version MAJOR.MINOR.PATCH):
 
 
 ```bash
