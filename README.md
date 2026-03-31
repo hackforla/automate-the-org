@@ -24,11 +24,15 @@ To install a centralized GitHub Actions (GHA) to a project repo, follow these st
   5. Do not change the "Source repo".
   6. Select which GitHub Action you would like installed.
   7. Do not change the "Branch name" or "GitHub App" name. 
-  8. To rollout the workflow, make sure that "Dry-run mode" is not checked, then click "Run workflow". The automation will generate the installation PR in the destination repo.
-  9. OPTIONAL: Only if you would like to check whether the automation will generate the expected values, check the box for "Dry-run mode" and click "Run workflow".  
-    a. Successful, error-free runs will be shown with green checks.  
-    b. When the workflow completes, click on the most recent "Rollout Workflow to Project", then on the next screen click on "Rollout-Workflow". Scroll down and open "Rollout to destination repo" for the dry-run report to see if this is what you expect.  
-    c. Next, click on "Label-Suggestions/Rollout-Label-Directory", then scroll down to "Preview PR comment". This will show the text for the supplemental comment on the PR.
+  8. OPTIONAL: Dry-run preview mode
+    a.Only if you would like to review whether the workflow will generate the expected values, check the box for "Dry-run mode" and click "Run workflow".  
+    b. When the workflow completes, error-free runs will be shown with green checks and failures with red x's. If the workflow fails and you cannot determine the cause, contact the ATO team. 
+    c. Upon successful completion, click on the most recent "Rollout Workflow to Project" then on the next screen click on "Rollout-Workflow". Scroll down and open "Preview PR body" for the dry-run report to see if this is what you expect.  
+    d. Next, click on "Label-Suggestions/Rollout-Label-Directory", then scroll down to "Preview PR comment". This will show the text for the supplemental comment on the PR.
+  9. Rollout the workflow
+    a. Make sure that "Dry-run mode" is not checked, then click "Run workflow". 
+    b. The automation will generate the installation PR in the destination repo.
+    c. Go to the Destination repo to review the generated PR.
   </details>  
   &emsp;  
 
