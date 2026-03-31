@@ -246,7 +246,7 @@ md.push('| Key value<br>(Do not change) | Default value<br>(in config file) | Su
 md.push('|:---:|:---:|:---:|:---|');
 Object.entries(requiredSuggestions).forEach(([key, { configValue, prefill, suggestions }]) => {
   const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';
-  const others = suggestions.map(s => `\"${s}\"`).join(', ') || '—';
+  const others = prefill ? '—' : (suggestions.map(s => `\"${s}\"`).join(', ') || '—');
   md.push(`| ${key}: | "${configValue}" | ${best} | ${others} |`);
 });
 md.push('');
@@ -257,7 +257,7 @@ md.push('| Key value<br>(N/A) | Default value<br>(in config file) | Suggested va
 md.push('|:---:|:---:|:---:|:---|');
 Object.entries(filteringSuggestions).forEach(([label, { prefill, suggestions }]) => {
   const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';
-  const others = suggestions.map(s => `"${s}"`).join(', ') || '—';
+  const others = prefill ? '—' : (suggestions.map(s => `"${s}"`).join(', ') || '—');
   md.push(`| --- | "${label}" | ${best} | ${others} |`);
 });
 md.push('');
@@ -269,7 +269,7 @@ if (modifying.length > 0) {
   md.push('|:---:|:---:|:---:|:---|');
   Object.entries(modifyingSuggestions).forEach(([label, { prefill, suggestions }]) => {
     const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';
-    const others = suggestions.map(s => `"${s}"`).join(', ') || '—';
+    const others = prefill ? '—' : (suggestions.map(s => `"${s}"`).join(', ') || '—');
     md.push(`| --- | "${label}" | ${best} | ${others} |`);
   });
   md.push('');
@@ -290,7 +290,7 @@ if (Object.keys(statusCols).length > 0) {
     md.push('|:---:|:---:|:---:|:---|');
     Object.entries(statusColSuggestions).forEach(([key, { configValue, prefill, suggestions }]) => {
       const best   = prefill ? `"${prefill}"` : '<em>no match found</em>';
-      const others = suggestions.map(s => `"${s}"`).join(', ') || '—';
+      const others = prefill ? '—' : (suggestions.map(s => `"${s}"`).join(', ') || '—');
       md.push(`| ${key}: | "${configValue}" | ${best} | ${others} |`);
     });
   }

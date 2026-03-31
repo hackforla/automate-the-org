@@ -297,17 +297,14 @@ jobs:
           echo "WORKFLOW_NAME=$WORKFLOW_NAME" >> $GITHUB_ENV
           echo "Workflow name: $WORKFLOW_NAME"
 
-      - name: Rollout to destination repo
+      - name: Get default branch
         env:
           APP_TOKEN: ${{ steps.generate-app-token.outputs.token }}
         run: |
           set -e
-          REPO="$TARGET_REPO"
-          echo "Processing repo: $REPO . . ."
           export GH_TOKEN="$APP_TOKEN"
-          
-          # Get default branch
-          DEFAULT_BRANCH=$(gh api repos/$REPO --jq '.default_branch'\
+
+          DEFAULT_BRANCH=$(gh api repos/$TARGET_REPO --jq '.default_branch' \
             -H "Authorization: token $GH_TOKEN")
           echo "Default branch: $DEFAULT_BRANCH"
 
@@ -317,36 +314,51 @@ jobs:
             exit 1
           fi
 
-          # Only in 'DRY_RUN' mode
-          if [ "$DRY_RUN" = "true" ]; then
-            echo "[DRY-RUN] Would clone repo: $REPO (branch: $DEFAULT_BRANCH)"
-            echo "[DRY-RUN] Would create branch: $ROLLOUT_BRANCH"
-            echo "[DRY-RUN] Would copy workflow file: $WORKFLOW_SRC -> $WORKFLOW_DEST"
-            
-            if [ -s config_files.json ]; then
-              cat config_files.json | jq -c '.[]' | while read -r item; do
-                SRC=$(echo "$item" | jq -r '.src')
-                DEST=$(echo "$item" | jq -r '.dest')
-                echo "[DRY-RUN] Would copy config file: $SRC -> $DEST"
-              done
-            else
-              echo "[DRY-RUN] No config files listed."
-            fi
+          echo "DEFAULT_BRANCH=$DEFAULT_BRANCH" >> $GITHUB_ENV
 
-            echo "[DRY-RUN] Would commit changes: Install ${WORKFLOW_NAME} and project-specific files"
-            echo "[DRY-RUN] Would push branch: $ROLLOUT_BRANCH"
-            
-            # read PR template for preview
-            PR_BODY=$(cat "central/.github/templates/$TEMPLATE_FILE")
-            
-            echo "[DRY-RUN] PR body preview:"
-            echo "----------------------------------"
-            echo "$PR_BODY"
-            echo "----------------------------------"
+      - name: Preview PR body
+        if: github.event.inputs.dry_run == 'true'
+        env:
+          APP_TOKEN: ${{ steps.generate-app-token.outputs.token }}
+        run: |
+          set -e
+          export GH_TOKEN="$APP_TOKEN"
 
-            echo "[DRY-RUN] Would create PR titled: Install workflow: ${WORKFLOW_NAME}"
-            exit 0
+          echo "[DRY-RUN] Would clone repo: $TARGET_REPO (branch: $DEFAULT_BRANCH)"
+          echo "[DRY-RUN] Would create branch: $ROLLOUT_BRANCH"
+          echo "[DRY-RUN] Would copy workflow file: $WORKFLOW_SRC -> $WORKFLOW_DEST"
+
+          if [ -s config_files.json ]; then
+            cat config_files.json | jq -c '.[]' | while read -r item; do
+              SRC=$(echo "$item" | jq -r '.src')
+              DEST=$(echo "$item" | jq -r '.dest')
+              echo "[DRY-RUN] Would copy config file: $SRC -> $DEST"
+            done
+          else
+            echo "[DRY-RUN] No config files listed."
           fi
+
+          echo "[DRY-RUN] Would commit changes: Install ${WORKFLOW_NAME} and project-specific files"
+          echo "[DRY-RUN] Would push branch: $ROLLOUT_BRANCH"
+
+          PR_BODY=$(cat "central/.github/templates/$TEMPLATE_FILE")
+
+          echo "[DRY-RUN] PR body preview:"
+          echo "----------------------------------"
+          echo "$PR_BODY"
+          echo "----------------------------------"
+
+          echo "[DRY-RUN] Would create PR titled: Install workflow: ${WORKFLOW_NAME}"
+
+      - name: Rollout to destination repo
+        if: github.event.inputs.dry_run != 'true'
+        env:
+          APP_TOKEN: ${{ steps.generate-app-token.outputs.token }}
+        run: |
+          set -e
+          REPO="$TARGET_REPO"
+          echo "Processing repo: $REPO . . ."
+          export GH_TOKEN="$APP_TOKEN"
 
           # Clone the destination repository
           echo "Cloning repository: $REPO (branch: $DEFAULT_BRANCH)"
