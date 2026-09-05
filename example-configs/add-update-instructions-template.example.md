@@ -21,4 +21,4 @@ will help us to help you. Please see the following examples from the Website tea
 - https://github.com/hackforla/website/issues/1619#issuecomment-897315561 and  
 - https://github.com/hackforla/website/issues/1908#issuecomment-877908152
 
-<sub>You are receiving this comment because your last update was before ${cutoffTime} PST.</sub>
+<sub>You are receiving this comment because your last update was before ${cutoffTime}.</sub>

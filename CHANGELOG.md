@@ -15,6 +15,15 @@ Add Update Label Weekly:
 - feat: Added optional `projectBoard.projectNumber` so the status is read from the intended board when an
   issue is on more than one; without it the previous first-item behavior is kept, now with a warning
 - fix: Raised `projectItems` 1 → 20 and `fieldValues` 10 → 50 so the status is not missed on busier boards
+- fix: The installed `add-update-instructions-template.md` is now actually used as the reminder text.
+  It was previously inert, so editing it- which the PR template and config comments both instruct you
+  to do- had no effect and the built-in default was always posted
+- feat: Added optional `commentTemplatePath` for projects that move or rename the template file, and
+  support for an inline `commentTemplate` in the config as an alternative to the file
+- fix: Removed the duplicated timezone suffix from the shipped template; `${cutoffTime}` already
+  carries PST/PDT, so the footer read "... 12:00 PM PDT PST"
+- chore: The built-in default is now the same text as the shipped template, so a fresh install posts
+  the same reminder whether or not the file is present
 
 ## v1.2.0
 2026-03-25  

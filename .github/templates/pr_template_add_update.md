@@ -28,7 +28,7 @@ This PR adds the "Add Update Label Weekly" GitHub Actions workflow to your proje
   - `.github/workflows/add-update-label-weekly.yml` 
 - **Configuration files**:
   - `github-actions/workflow-configs/add-update-label-weekly-config.yml`
-  - `github-actions/workflow-configs/templates/add-update-instructions-template.md`
+  - `github-actions/workflow-configs/templates/add-update-instructions-template.md` (the reminder text)
 
 ### What this workflow does
 
@@ -69,7 +69,9 @@ This PR adds the "Add Update Label Weekly" GitHub Actions workflow to your proje
       - `"Bot comment template"`
         - For the optional variable `teamSlackChannel`: Add your team's Slack Channel (once again in "double quotes") if you want this info on the Bot comment template.  
     - `github-actions/workflow-configs/templates/add-update-instructions-template.md`
-      - We recommend keeping this version. If needed, edit using markdown syntax.
+      - This file is the text the bot posts on an issue that needs an update. We recommend keeping this version; if you do want to reword it, edit it here using markdown syntax.
+      - The `${...}` placeholders are filled in at run time- see the list in the config file- so leave them as they are unless you mean to drop that piece of information.
+      - Any HTML comments at the top of the file are instructions for whoever installs it and are not posted.
 
 2. **After configuring and committing the PR**
     - **Test in dry-run preview mode (optional)**
