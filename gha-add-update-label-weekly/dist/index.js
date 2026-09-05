@@ -28409,17 +28409,21 @@ var require_get_repo_labels = __commonJS({
 var require_query_issue_info = __commonJS({
   "shared/query-issue-info.js"(exports2, module2) {
     var { logger: logger2 } = require_format_log_messages();
-    async function queryIssueInfo(github2, context3, issueNum) {
+    async function queryIssueInfo(github2, context3, issueNum, projectNumber = null) {
       const repoOwner = context3.repo.owner;
       const repoName = context3.repo.repo;
       const query = `query($owner: String!, $repo: String!, $issueNum: Int!) {
     repository(owner: $owner, name: $repo) {
       issue(number: $issueNum) {
         id
-        projectItems(first: 1) {
+        projectItems(first: 20) {
           nodes {
             id
-            fieldValues(first: 10) {
+            project {
+              number
+              title
+            }
+            fieldValues(first: 50) {
               nodes {
                 ... on ProjectV2ItemFieldSingleSelectValue {
                   name
@@ -28437,17 +28441,51 @@ var require_query_issue_info = __commonJS({
         repo: repoName,
         issueNum
       };
+      let response;
       try {
-        const response = await github2.graphql(query, variables);
-        const projectData = response.repository.issue.projectItems.nodes;
-        const id = projectData[0].id;
-        const statusName = projectData[0].fieldValues.nodes.find((item) => item.hasOwnProperty("name")).name;
-        const statusId = projectData[0].fieldValues.nodes.find((item) => item.hasOwnProperty("optionId")).optionId;
-        return { id, statusName, statusId };
+        response = await github2.graphql(query, variables);
       } catch (error2) {
         logger2.error(`Error finding Issue #${issueNum} id and status; error = ${error2}`);
         throw new Error(error2);
       }
+      const projectItems = response?.repository?.issue?.projectItems?.nodes ?? [];
+      if (projectItems.length === 0) {
+        logger2.warn(`Issue #${issueNum}: not on a Project Board; skipping`, 2);
+        return null;
+      }
+      const projectItem = selectProjectItem(projectItems, issueNum, projectNumber);
+      if (!projectItem) {
+        return null;
+      }
+      const fieldValues = projectItem.fieldValues?.nodes ?? [];
+      const status = fieldValues.find((value) => value && Object.prototype.hasOwnProperty.call(value, "name"));
+      if (!status) {
+        logger2.debug(
+          `Issue #${issueNum}: no status set on Project Board #${projectItem.project?.number}; skipping`,
+          2
+        );
+        return null;
+      }
+      return { id: projectItem.id, statusName: status.name, statusId: status.optionId };
+    }
+    function selectProjectItem(projectItems, issueNum, projectNumber) {
+      const wantedNumber = projectNumber === null || projectNumber === void 0 ? null : Number(projectNumber);
+      if (wantedNumber !== null && !Number.isNaN(wantedNumber)) {
+        const match = projectItems.find((item) => item?.project?.number === wantedNumber);
+        if (!match) {
+          logger2.debug(`Issue #${issueNum}: not on Project Board #${wantedNumber}; skipping`, 2);
+          return null;
+        }
+        return match;
+      }
+      const firstItem = projectItems[0];
+      if (projectItems.length > 1) {
+        logger2.warn(
+          `Issue #${issueNum}: on ${projectItems.length} Project Boards and no 'projectBoard.projectNumber' is configured; reading status from "${firstItem.project?.title}" (#${firstItem.project?.number})`,
+          2
+        );
+      }
+      return firstItem;
     }
     module2.exports = queryIssueInfo;
   }
@@ -28689,8 +28727,13 @@ var require_add_update_label_weekly = __commonJS({
         if (pull_request !== void 0) continue;
         const issueLabelNames = issueLabels.map((label) => label.name);
         if (issueLabelNames.some((item) => labelsToExclude.includes(item))) continue;
-        const { statusName } = await queryIssueInfo(github2, context3, number);
-        if (statusName === config.projectBoard.targetStatus) {
+        const issueInfo = await queryIssueInfo(
+          github2,
+          context3,
+          number,
+          config.projectBoard.projectNumber
+        );
+        if (issueInfo && issueInfo.statusName === config.projectBoard.targetStatus) {
           issueNums.push(number);
         }
       }
@@ -28854,7 +28897,7 @@ var require_package = __commonJS({
   "package.json"(exports2, module2) {
     module2.exports = {
       name: "add-update-label-weekly",
-      version: "1.1.0",
+      version: "1.2.0",
       description: "Centralized GitHub Actions for repository maintenance and automation across the organization.",
       private: true,
       main: "dist/index.js",
@@ -28990,7 +29033,9 @@ function getDefaultConfigs() {
     },
     projectBoard: {
       targetStatus: "In progress (actively working)",
-      questionsStatus: "Questions / In Review"
+      questionsStatus: "Questions / In Review",
+      projectNumber: null
+      // Board to read the status from; null uses the issue's first project item
     },
     labels: {
       filtering: []

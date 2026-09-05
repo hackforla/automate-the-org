@@ -116,6 +116,7 @@ function getDefaultConfigs() {
     projectBoard: {
       targetStatus: 'In progress (actively working)', 
       questionsStatus: 'Questions / In Review',
+      projectNumber: null,  // Board to read the status from; null uses the issue's first project item
     },
     
     labels: {

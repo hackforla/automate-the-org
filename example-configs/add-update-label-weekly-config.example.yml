@@ -130,6 +130,13 @@ timeframes:
 #
 #  targetStatus:    Required for inclusion in update checks
 #  questionsStatus: Optional; assignees may move issues here to skip checks
+#  projectNumber:   Optional; which Project Board to read the status from
+#
+# `projectNumber` matters when your issues sit on more than one Project Board. Without it the workflow
+# reads the status from whichever board GitHub returns first, which may not be the board this config
+# describes- so an issue can be skipped even though it is in the `targetStatus` column of your board.
+# Set it to the number in your board's URL: https://github.com/orgs/<org>/projects/<projectNumber>
+# Leave it commented out to keep the previous behavior.
 #
 # The status-column values shown below in "double quotes" are default values 
 # only. Each of these values **must exactly match an existing status-column** 
@@ -140,6 +147,7 @@ timeframes:
 projectBoard:
   targetStatus: "In progress (actively working)" # <-- confirm default value
   questionsStatus: "Questions / In Review" # <-- confirm default value
+  # projectNumber: 123 # <-- uncomment and set to your board's number
 
 
 
