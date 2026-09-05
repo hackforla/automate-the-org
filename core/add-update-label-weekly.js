@@ -148,9 +148,11 @@ async function getIssueNumsFromRepo() {
     const issueLabelNames = issueLabels.map(label => label.name);
     if (issueLabelNames.some(item => labelsToExclude.includes(item))) continue;
 
-    // For remaining issues, check if status === target status from config
-    const { statusName } = await queryIssueInfo(github, context, number);
-    if (statusName === config.projectBoard.targetStatus) {
+    // For remaining issues, check if status === target status from config. `queryIssueInfo` returns null
+    // when the issue has no status to read- e.g. it is not on the configured board- so skip those.
+    const issueInfo = await queryIssueInfo(
+      github, context, number, config.projectBoard.projectNumber);
+    if (issueInfo && issueInfo.statusName === config.projectBoard.targetStatus) {
       issueNums.push(number);
     }
   }

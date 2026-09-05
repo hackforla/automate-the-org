@@ -8,7 +8,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
-_No unreleased changes yet._
+
+Add Update Label Weekly:
+- fix: An open, assigned issue that is not on any Project Board no longer throws and aborts the entire run
+- fix: A project card with its status column unset is now skipped instead of throwing
+- feat: Added optional `projectBoard.projectNumber` so the status is read from the intended board when an
+  issue is on more than one; without it the previous first-item behavior is kept, now with a warning
+- fix: Raised `projectItems` 1 → 20 and `fieldValues` 10 → 50 so the status is not missed on busier boards
 
 ## v1.2.0
 2026-03-25  
