@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
+_No unreleased changes yet._
+
+## v1.3.0
+2026-09-05
 
 Add Update Label Weekly:
 - fix: An open, assigned issue that is not on any Project Board no longer throws and aborts the entire run
