@@ -1265,14 +1265,14 @@ var require_util = __commonJS({
         }
         const port = url.port != null ? url.port : url.protocol === "https:" ? 443 : 80;
         let origin = url.origin != null ? url.origin : `${url.protocol || ""}//${url.hostname || ""}:${port}`;
-        let path6 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
+        let path7 = url.path != null ? url.path : `${url.pathname || ""}${url.search || ""}`;
         if (origin[origin.length - 1] === "/") {
           origin = origin.slice(0, origin.length - 1);
         }
-        if (path6 && path6[0] !== "/") {
-          path6 = `/${path6}`;
+        if (path7 && path7[0] !== "/") {
+          path7 = `/${path7}`;
         }
-        return new URL(`${origin}${path6}`);
+        return new URL(`${origin}${path7}`);
       }
       if (!isHttpOrHttpsPrefixed(url.origin || url.protocol)) {
         throw new InvalidArgumentError("Invalid URL protocol: the URL must start with `http:` or `https:`.");
@@ -1723,39 +1723,39 @@ var require_diagnostics = __commonJS({
       });
       diagnosticsChannel.channel("undici:client:sendHeaders").subscribe((evt) => {
         const {
-          request: { method, path: path6, origin }
+          request: { method, path: path7, origin }
         } = evt;
-        debuglog("sending request to %s %s/%s", method, origin, path6);
+        debuglog("sending request to %s %s/%s", method, origin, path7);
       });
       diagnosticsChannel.channel("undici:request:headers").subscribe((evt) => {
         const {
-          request: { method, path: path6, origin },
+          request: { method, path: path7, origin },
           response: { statusCode }
         } = evt;
         debuglog(
           "received response to %s %s/%s - HTTP %d",
           method,
           origin,
-          path6,
+          path7,
           statusCode
         );
       });
       diagnosticsChannel.channel("undici:request:trailers").subscribe((evt) => {
         const {
-          request: { method, path: path6, origin }
+          request: { method, path: path7, origin }
         } = evt;
-        debuglog("trailers received from %s %s/%s", method, origin, path6);
+        debuglog("trailers received from %s %s/%s", method, origin, path7);
       });
       diagnosticsChannel.channel("undici:request:error").subscribe((evt) => {
         const {
-          request: { method, path: path6, origin },
+          request: { method, path: path7, origin },
           error: error2
         } = evt;
         debuglog(
           "request to %s %s/%s errored - %s",
           method,
           origin,
-          path6,
+          path7,
           error2.message
         );
       });
@@ -1804,9 +1804,9 @@ var require_diagnostics = __commonJS({
         });
         diagnosticsChannel.channel("undici:client:sendHeaders").subscribe((evt) => {
           const {
-            request: { method, path: path6, origin }
+            request: { method, path: path7, origin }
           } = evt;
-          debuglog("sending request to %s %s/%s", method, origin, path6);
+          debuglog("sending request to %s %s/%s", method, origin, path7);
         });
       }
       diagnosticsChannel.channel("undici:websocket:open").subscribe((evt) => {
@@ -1869,7 +1869,7 @@ var require_request = __commonJS({
     var kHandler = /* @__PURE__ */ Symbol("handler");
     var Request = class {
       constructor(origin, {
-        path: path6,
+        path: path7,
         method,
         body,
         headers,
@@ -1884,11 +1884,11 @@ var require_request = __commonJS({
         expectContinue,
         servername
       }, handler2) {
-        if (typeof path6 !== "string") {
+        if (typeof path7 !== "string") {
           throw new InvalidArgumentError("path must be a string");
-        } else if (path6[0] !== "/" && !(path6.startsWith("http://") || path6.startsWith("https://")) && method !== "CONNECT") {
+        } else if (path7[0] !== "/" && !(path7.startsWith("http://") || path7.startsWith("https://")) && method !== "CONNECT") {
           throw new InvalidArgumentError("path must be an absolute URL or start with a slash");
-        } else if (invalidPathRegex.test(path6)) {
+        } else if (invalidPathRegex.test(path7)) {
           throw new InvalidArgumentError("invalid request path");
         }
         if (typeof method !== "string") {
@@ -1954,7 +1954,7 @@ var require_request = __commonJS({
         this.completed = false;
         this.aborted = false;
         this.upgrade = upgrade || null;
-        this.path = query ? buildURL(path6, query) : path6;
+        this.path = query ? buildURL(path7, query) : path7;
         this.origin = origin;
         this.idempotent = idempotent == null ? method === "HEAD" || method === "GET" : idempotent;
         this.blocking = blocking == null ? false : blocking;
@@ -6473,7 +6473,7 @@ var require_client_h1 = __commonJS({
       return method !== "GET" && method !== "HEAD" && method !== "OPTIONS" && method !== "TRACE" && method !== "CONNECT";
     }
     function writeH1(client, request2) {
-      const { method, path: path6, host, upgrade, blocking, reset } = request2;
+      const { method, path: path7, host, upgrade, blocking, reset } = request2;
       let { body, headers, contentLength } = request2;
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH" || method === "QUERY" || method === "PROPFIND" || method === "PROPPATCH";
       if (util.isFormDataLike(body)) {
@@ -6539,7 +6539,7 @@ var require_client_h1 = __commonJS({
       if (blocking) {
         socket[kBlocking] = true;
       }
-      let header = `${method} ${path6} HTTP/1.1\r
+      let header = `${method} ${path7} HTTP/1.1\r
 `;
       if (typeof host === "string") {
         header += `host: ${host}\r
@@ -7065,7 +7065,7 @@ var require_client_h2 = __commonJS({
     }
     function writeH2(client, request2) {
       const session = client[kHTTP2Session];
-      const { method, path: path6, host, upgrade, expectContinue, signal, headers: reqHeaders } = request2;
+      const { method, path: path7, host, upgrade, expectContinue, signal, headers: reqHeaders } = request2;
       let { body } = request2;
       if (upgrade) {
         util.errorRequest(client, request2, new Error("Upgrade not supported for H2"));
@@ -7132,7 +7132,7 @@ var require_client_h2 = __commonJS({
         });
         return true;
       }
-      headers[HTTP2_HEADER_PATH] = path6;
+      headers[HTTP2_HEADER_PATH] = path7;
       headers[HTTP2_HEADER_SCHEME] = "https";
       const expectsPayload = method === "PUT" || method === "POST" || method === "PATCH";
       if (body && typeof body.read === "function") {
@@ -7485,9 +7485,9 @@ var require_redirect_handler = __commonJS({
           return this.handler.onHeaders(statusCode, headers, resume, statusText);
         }
         const { origin, pathname, search } = util.parseURL(new URL(this.location, this.opts.origin && new URL(this.opts.path, this.opts.origin)));
-        const path6 = search ? `${pathname}${search}` : pathname;
+        const path7 = search ? `${pathname}${search}` : pathname;
         this.opts.headers = cleanRequestHeaders(this.opts.headers, statusCode === 303, this.opts.origin !== origin);
-        this.opts.path = path6;
+        this.opts.path = path7;
         this.opts.origin = origin;
         this.opts.maxRedirections = 0;
         this.opts.query = null;
@@ -8721,10 +8721,10 @@ var require_proxy_agent = __commonJS({
         };
         const {
           origin,
-          path: path6 = "/",
+          path: path7 = "/",
           headers = {}
         } = opts;
-        opts.path = origin + path6;
+        opts.path = origin + path7;
         if (!("host" in headers) && !("Host" in headers)) {
           const { host } = new URL2(origin);
           headers.host = host;
@@ -10645,20 +10645,20 @@ var require_mock_utils = __commonJS({
       }
       return true;
     }
-    function safeUrl(path6) {
-      if (typeof path6 !== "string") {
-        return path6;
+    function safeUrl(path7) {
+      if (typeof path7 !== "string") {
+        return path7;
       }
-      const pathSegments = path6.split("?");
+      const pathSegments = path7.split("?");
       if (pathSegments.length !== 2) {
-        return path6;
+        return path7;
       }
       const qp = new URLSearchParams(pathSegments.pop());
       qp.sort();
       return [...pathSegments, qp.toString()].join("?");
     }
-    function matchKey(mockDispatch2, { path: path6, method, body, headers }) {
-      const pathMatch = matchValue(mockDispatch2.path, path6);
+    function matchKey(mockDispatch2, { path: path7, method, body, headers }) {
+      const pathMatch = matchValue(mockDispatch2.path, path7);
       const methodMatch = matchValue(mockDispatch2.method, method);
       const bodyMatch = typeof mockDispatch2.body !== "undefined" ? matchValue(mockDispatch2.body, body) : true;
       const headersMatch = matchHeaders(mockDispatch2, headers);
@@ -10680,7 +10680,7 @@ var require_mock_utils = __commonJS({
     function getMockDispatch(mockDispatches, key) {
       const basePath = key.query ? buildURL(key.path, key.query) : key.path;
       const resolvedPath = typeof basePath === "string" ? safeUrl(basePath) : basePath;
-      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path6 }) => matchValue(safeUrl(path6), resolvedPath));
+      let matchedMockDispatches = mockDispatches.filter(({ consumed }) => !consumed).filter(({ path: path7 }) => matchValue(safeUrl(path7), resolvedPath));
       if (matchedMockDispatches.length === 0) {
         throw new MockNotMatchedError(`Mock dispatch not matched for path '${resolvedPath}'`);
       }
@@ -10718,9 +10718,9 @@ var require_mock_utils = __commonJS({
       }
     }
     function buildKey(opts) {
-      const { path: path6, method, body, headers, query } = opts;
+      const { path: path7, method, body, headers, query } = opts;
       return {
-        path: path6,
+        path: path7,
         method,
         body,
         headers,
@@ -11183,10 +11183,10 @@ var require_pending_interceptors_formatter = __commonJS({
       }
       format(pendingInterceptors) {
         const withPrettyHeaders = pendingInterceptors.map(
-          ({ method, path: path6, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
+          ({ method, path: path7, data: { statusCode }, persist, times, timesInvoked, origin }) => ({
             Method: method,
             Origin: origin,
-            Path: path6,
+            Path: path7,
             "Status code": statusCode,
             Persistent: persist ? PERSISTENT : NOT_PERSISTENT,
             Invocations: timesInvoked,
@@ -16067,9 +16067,9 @@ var require_util6 = __commonJS({
         }
       }
     }
-    function validateCookiePath(path6) {
-      for (let i = 0; i < path6.length; ++i) {
-        const code = path6.charCodeAt(i);
+    function validateCookiePath(path7) {
+      for (let i = 0; i < path7.length; ++i) {
+        const code = path7.charCodeAt(i);
         if (code < 32 || // exclude CTLs (0-31)
         code === 127 || // DEL
         code === 59) {
@@ -18709,11 +18709,11 @@ var require_undici = __commonJS({
           if (typeof opts.path !== "string") {
             throw new InvalidArgumentError("invalid opts.path");
           }
-          let path6 = opts.path;
+          let path7 = opts.path;
           if (!opts.path.startsWith("/")) {
-            path6 = `/${path6}`;
+            path7 = `/${path7}`;
           }
-          url = new URL(util.parseOrigin(url).origin + path6);
+          url = new URL(util.parseOrigin(url).origin + path7);
         } else {
           if (!opts) {
             opts = typeof url === "object" ? url : {};
@@ -20953,8 +20953,8 @@ var init_context = __esm({
           if ((0, import_fs2.existsSync)(process.env.GITHUB_EVENT_PATH)) {
             this.payload = JSON.parse((0, import_fs2.readFileSync)(process.env.GITHUB_EVENT_PATH, { encoding: "utf8" }));
           } else {
-            const path6 = process.env.GITHUB_EVENT_PATH;
-            process.stdout.write(`GITHUB_EVENT_PATH ${path6} does not exist${import_os3.EOL}`);
+            const path7 = process.env.GITHUB_EVENT_PATH;
+            process.stdout.write(`GITHUB_EVENT_PATH ${path7} does not exist${import_os3.EOL}`);
           }
         }
         this.eventName = process.env.GITHUB_EVENT_NAME;
@@ -28257,8 +28257,8 @@ var init_js_yaml = __esm({
 // shared/resolve-configs.js
 var require_resolve_configs = __commonJS({
   "shared/resolve-configs.js"(exports2, module2) {
-    var fs3 = require("fs");
-    var path6 = require("path");
+    var fs4 = require("fs");
+    var path7 = require("path");
     var yaml = (init_js_yaml(), __toCommonJS(js_yaml_exports));
     var { logger: logger2 } = require_format_log_messages();
     function resolveConfigs2({
@@ -28268,11 +28268,11 @@ var require_resolve_configs = __commonJS({
       overrides = {},
       requiredFields = []
     }) {
-      const fullPath = path6.join(projectRepoPath, configPath);
+      const fullPath = path7.join(projectRepoPath, configPath);
       let projectConfig = {};
-      if (fs3.existsSync(fullPath)) {
+      if (fs4.existsSync(fullPath)) {
         try {
-          const fileContents = fs3.readFileSync(fullPath, "utf8");
+          const fileContents = fs4.readFileSync(fullPath, "utf8");
           projectConfig = yaml.load(fileContents) || {};
           logger2.info(`Loaded configuration from: ${configPath}`);
         } catch (error2) {
@@ -28942,6 +28942,8 @@ var require_package = __commonJS({
 });
 
 // gha-add-update-label-weekly/index.js
+var fs3 = require("fs");
+var path6 = require("path");
 var core2 = (init_core(), __toCommonJS(core_exports));
 var github = (init_github(), __toCommonJS(github_exports));
 var { logger } = require_format_log_messages();
@@ -28949,6 +28951,7 @@ var resolveConfigs = require_resolve_configs();
 var { checkIfLabelsInRepo } = require_get_repo_labels();
 var addUpdateLabelWeekly = require_add_update_label_weekly();
 var packageJson = require_package();
+var DEFAULT_COMMENT_TEMPLATE_PATH = "github-actions/workflow-configs/templates/add-update-instructions-template.md";
 async function run() {
   try {
     logger.log(`=`.repeat(60));
@@ -28984,10 +28987,14 @@ async function run() {
         "timeframes.isInactiveByDays",
         "timeframes.upperLimitDays",
         "projectBoard.targetStatus",
-        "projectBoard.questionsStatus",
-        "commentTemplate"
+        "projectBoard.questionsStatus"
       ]
     });
+    if (config.commentTemplate) {
+      logger.info(`Using inline 'commentTemplate' from the configuration file`);
+    } else {
+      config.commentTemplate = loadCommentTemplate(projectRepoPath, config.commentTemplatePath);
+    }
     logger.log(``);
     await checkIfLabelsInRepo(
       octokit,
@@ -29046,30 +29053,49 @@ function getDefaultConfigs() {
     ],
     teamSlackChannel: "",
     timezone: "America/Los_Angeles",
-    commentTemplate: getDefaultCommentTemplate()
+    commentTemplatePath: DEFAULT_COMMENT_TEMPLATE_PATH
   };
 }
+function loadCommentTemplate(projectRepoPath, templatePath) {
+  const relativePath = templatePath || DEFAULT_COMMENT_TEMPLATE_PATH;
+  const fullPath = path6.join(projectRepoPath, relativePath);
+  if (!fs3.existsSync(fullPath)) {
+    logger.info(`No comment template at ${relativePath}, using the built-in default`);
+    return getDefaultCommentTemplate();
+  }
+  const template = stripLeadingHtmlComments(fs3.readFileSync(fullPath, "utf8")).trim();
+  if (!template) {
+    logger.warn(`Comment template at ${relativePath} is empty, using the built-in default`);
+    return getDefaultCommentTemplate();
+  }
+  logger.info(`Loaded comment template from: ${relativePath}`);
+  return template;
+}
+function stripLeadingHtmlComments(text) {
+  return text.replace(/^(?:\s*<!--[\s\S]*?-->\s*)+/, "");
+}
 function getDefaultCommentTemplate() {
-  return `Hello \${assignees}!
-  
-Please add an update comment using the below template (even if you have a pull request). Afterwards, remove 
+  return `Hello \${assignees}-
+
+Please add an update using the below template (even if you have a pull request). Afterwards, remove
 the \`\${label}\` label and add the \`\${statusUpdated}\` label.
 
-1. Progress: What is the current status of your issue? What have you completed and what is left to do?
+1. Progress: What is the current status of this issue? What have you completed and what is left to do?
 2. Blockers: Explain any difficulties or errors encountered.
 3. Availability: How much time will you have this week to work on this issue?
 4. ETA: When do you expect this issue to be completed?
 5. Pictures (optional): Add any pictures of the visual changes made to the site so far.
 
-If you need help, be sure to either: 1) place your issue in the "\${questionsStatus}" status column of the 
+If you need help, be sure to either: 1) place your issue in the "\${questionsStatus}" status-column of the 
 Project Board and ask for help at your next meeting; 2) put a \`\${statusHelpWanted}\` label on your issue 
 and pull request; or 3) put up a request for assistance on the team's \${teamSlackChannel} Slack channel.  
 
 Please note that including your questions in the issue comments- along with screenshots, if applicable- 
-will help us to help you. [Here](https://github.com/hackforla/website/issues/1619#issuecomment-897315561) and [here](https://github.com/hackforla/website/issues/1908#issuecomment-877908152) are examples of well-formed questions.
+will help us to help you. Please see the following examples from the Website team of well-formed questions:  
+- https://github.com/hackforla/website/issues/1619#issuecomment-897315561 and  
+- https://github.com/hackforla/website/issues/1908#issuecomment-877908152
 
-
-<sub>You are receiving this comment because your last comment was before \${cutoffTime}.</sub>`;
+<sub>You are receiving this comment because your last update was before \${cutoffTime}.</sub>`;
 }
 run();
 /*! Bundled license information:

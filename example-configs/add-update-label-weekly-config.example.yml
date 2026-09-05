@@ -171,9 +171,21 @@ bots:
 # Bot comment template
 # ==============================================================================
 #
-# Template for the comment posted to issues needing updates. Ref. relevant labels,
-# project board status-column configuration, etc. above. See template tile:
+# The reminder text comes from the template file installed alongside this config:
 # `github-actions/workflow-configs/templates/add-update-instructions-template.md`
+# Edit that file to change what the bot says. Ref. relevant labels, project board status-column
+# configuration, etc. above.
+#
+# Resolution order, highest first:
+#   1. `commentTemplate` set below, if you would rather keep the text inline than in its own file
+#   2. the template file (see `commentTemplatePath`, only needed if you move or rename it)
+#   3. the workflow's built-in default, used when no template file is present
+#
+# commentTemplatePath: "github-actions/workflow-configs/templates/add-update-instructions-template.md"
+#
+# commentTemplate: |
+#   Hello ${assignees}-
+#   ...
 #
 # Variables used by template:
 #   ${assignees}          - @-mentions of all assignees (e.g., "@user1, @user2")

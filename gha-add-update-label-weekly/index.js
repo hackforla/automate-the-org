@@ -1,4 +1,6 @@
 // Import modules
+const fs = require('fs');
+const path = require('path');
 const core = require('@actions/core');
 const github = require('@actions/github');
 const { logger } = require('../shared/format-log-messages');
@@ -6,6 +8,10 @@ const resolveConfigs = require('../shared/resolve-configs');
 const { checkIfLabelsInRepo } = require('../shared/get-repo-labels');
 const addUpdateLabelWeekly = require('../core/add-update-label-weekly');
 const packageJson = require('../package.json'); 
+
+// Where the rollout installs the comment template. Overridable via `commentTemplatePath` in the config.
+const DEFAULT_COMMENT_TEMPLATE_PATH =
+  'github-actions/workflow-configs/templates/add-update-instructions-template.md';
 
 /**
  * Main entry point for the Add Update Label Weekly action
@@ -59,9 +65,16 @@ async function run() {
         'timeframes.upperLimitDays',
         'projectBoard.targetStatus',
         'projectBoard.questionsStatus',
-        'commentTemplate',
       ],
     });
+
+    // Resolve the reminder text. An inline `commentTemplate` in the config file wins; otherwise the
+    // installed template file is used; otherwise the built-in default.
+    if (config.commentTemplate) {
+      logger.info(`Using inline 'commentTemplate' from the configuration file`);
+    } else {
+      config.commentTemplate = loadCommentTemplate(projectRepoPath, config.commentTemplatePath);
+    }
     logger.log(``);
 
     // Confirm that all labels exist in the repo
@@ -132,9 +145,47 @@ function getDefaultConfigs() {
     teamSlackChannel: '',
 
     timezone: 'America/Los_Angeles',
-    
-    commentTemplate: getDefaultCommentTemplate(),
+
+    commentTemplatePath: DEFAULT_COMMENT_TEMPLATE_PATH,
   };
+}
+
+/**
+ * Loads the reminder text from the template file installed in the project repo, falling back to the
+ * built-in default when that file is absent or empty
+ * @param {string} projectRepoPath - Path to the checked-out project repository
+ * @param {string} [templatePath]  - Path to the template, relative to the repository root
+ * @returns {string}               - Comment template with placeholders
+ */
+function loadCommentTemplate(projectRepoPath, templatePath) {
+  const relativePath = templatePath || DEFAULT_COMMENT_TEMPLATE_PATH;
+  const fullPath = path.join(projectRepoPath, relativePath);
+
+  if (!fs.existsSync(fullPath)) {
+    logger.info(`No comment template at ${relativePath}, using the built-in default`);
+    return getDefaultCommentTemplate();
+  }
+
+  // Leading HTML comments in the shipped template are instructions to whoever installs it, not part of
+  // the reminder, so they are dropped rather than posted onto the issue.
+  const template = stripLeadingHtmlComments(fs.readFileSync(fullPath, 'utf8')).trim();
+
+  if (!template) {
+    logger.warn(`Comment template at ${relativePath} is empty, using the built-in default`);
+    return getDefaultCommentTemplate();
+  }
+
+  logger.info(`Loaded comment template from: ${relativePath}`);
+  return template;
+}
+
+/**
+ * Strips any HTML comments at the very start of a string
+ * @param {string} text - The raw file contents
+ * @returns {string}    - The contents with leading HTML comments removed
+ */
+function stripLeadingHtmlComments(text) {
+  return text.replace(/^(?:\s*<!--[\s\S]*?-->\s*)+/, '');
 }
 
 /**
@@ -142,26 +193,27 @@ function getDefaultConfigs() {
  * @returns {string} Comment template with placeholders
  */
 function getDefaultCommentTemplate() {
-  return `Hello \${assignees}!
-  
-Please add an update comment using the below template (even if you have a pull request). Afterwards, remove 
+  return `Hello \${assignees}-
+
+Please add an update using the below template (even if you have a pull request). Afterwards, remove
 the \`\${label}\` label and add the \`\${statusUpdated}\` label.
 
-1. Progress: What is the current status of your issue? What have you completed and what is left to do?
+1. Progress: What is the current status of this issue? What have you completed and what is left to do?
 2. Blockers: Explain any difficulties or errors encountered.
 3. Availability: How much time will you have this week to work on this issue?
 4. ETA: When do you expect this issue to be completed?
 5. Pictures (optional): Add any pictures of the visual changes made to the site so far.
 
-If you need help, be sure to either: 1) place your issue in the "\${questionsStatus}" status column of the 
+If you need help, be sure to either: 1) place your issue in the "\${questionsStatus}" status-column of the 
 Project Board and ask for help at your next meeting; 2) put a \`\${statusHelpWanted}\` label on your issue 
 and pull request; or 3) put up a request for assistance on the team's \${teamSlackChannel} Slack channel.  
 
 Please note that including your questions in the issue comments- along with screenshots, if applicable- 
-will help us to help you. [Here](https://github.com/hackforla/website/issues/1619#issuecomment-897315561) and [here](https://github.com/hackforla/website/issues/1908#issuecomment-877908152) are examples of well-formed questions.
+will help us to help you. Please see the following examples from the Website team of well-formed questions:  
+- https://github.com/hackforla/website/issues/1619#issuecomment-897315561 and  
+- https://github.com/hackforla/website/issues/1908#issuecomment-877908152
 
-
-<sub>You are receiving this comment because your last comment was before \${cutoffTime}.</sub>`;
+<sub>You are receiving this comment because your last update was before \${cutoffTime}.</sub>`;
 }
 
 // Run the action

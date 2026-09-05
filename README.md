@@ -113,6 +113,7 @@ Choose your desired workflow, then follow the steps to implement it in your repo
 - Additional features:
   - Minimizes previous, repetitive bot comments within a specified timeframe<sup>2</sup>.
   - Applies the label (default) "statusUpdated": `status: updated`<sup>4</sup> if an update was posted recently.
+  - The reminder text itself comes from `github-actions/workflow-configs/templates/add-update-instructions-template.md` in the project repo; edit that file to change it.
   - Removes previously applied labels when appropriate.
 - Ensures ongoing communication, accountability, and support across active tasks.
 
