@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 ## [Unreleased]
-_No unreleased changes yet._
+
+
+Add Update Label Weekly:
+- fix: Upgrade the action runtime and build target from Node.js 20 to Node.js 24.
 
 ## v1.3.0
 2026-09-05

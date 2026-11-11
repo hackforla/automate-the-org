@@ -28902,7 +28902,7 @@ var require_package = __commonJS({
       private: true,
       main: "dist/index.js",
       scripts: {
-        build: "esbuild gha-add-update-label-weekly/index.js --bundle --platform=node --target=node20 --format=cjs --conditions=import --outfile=gha-add-update-label-weekly/dist/index.js",
+        build: "esbuild gha-add-update-label-weekly/index.js --bundle --platform=node --target=node24 --format=cjs --conditions=import --outfile=gha-add-update-label-weekly/dist/index.js",
         "build:all": "npm run build",
         test: 'echo "Error: no test specified" && exit 1',
         lint: 'echo "Add linting script here"',
